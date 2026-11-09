@@ -125,7 +125,7 @@ export default function Composer({
   return (
     <div className="border-t border-line p-3">
       <div
-        className={`rounded-2xl border bg-white ${listening ? "border-[#e5372a]" : "border-[#d6d6d2] focus-within:border-neutral-400"}`}
+        className={`rounded-2xl border bg-white ${listening ? "border-[#e5372a]" : "border-line-strong focus-within:border-neutral-400"}`}
       >
         <textarea
           ref={areaRef}
@@ -155,7 +155,7 @@ export default function Composer({
               disabled={disabled}
               aria-label={listening ? "Stop dictating" : "Dictate your answer"}
               aria-pressed={listening}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${listening ? "bg-[#e5372a] text-white ring-4 ring-[#e5372a]/25" : "text-ink2 hover:bg-[#f2f4f8]"}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${listening ? "bg-[#e5372a] text-white ring-4 ring-[#e5372a]/25" : "text-ink2 hover:bg-muted"}`}
             >
               {listening ? <Square size={14} /> : <Mic size={18} />}
             </button>
@@ -165,7 +165,7 @@ export default function Composer({
             onClick={send}
             disabled={!canSend}
             aria-label="Send"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1f1f1f] text-white transition-colors hover:bg-[#333] disabled:bg-[#e3e3e0] disabled:text-[#9a9a9a]"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-ink disabled:bg-[#e3e3e0] disabled:text-ink3"
           >
             {sending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} />}
           </button>

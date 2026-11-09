@@ -1,21 +1,36 @@
 @import "tailwindcss";
 
+/*
+ * Socratic design tokens. Source: design/refs/designresearch.md §4.
+ * One accent (academic blue), warm paper neutrals, serif page titles,
+ * status colours only for status. Never colour alone: every dot has a label.
+ */
 @theme inline {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, sans-serif;
-  --color-page: #f5f5f5;
-  --color-paper: #ffffff;
-  --color-accent: #111111;
-  --color-accent-soft: #f5f5f5;
-  --color-amber-ink: #8f5d0a;
-  --font-serif: var(--font-sans);
-  --color-ink: #111111;
-  --color-ink2: #6b6b6b;
-  --color-ink3: #8a8a8a;
-  --color-line: #eaeaea;
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, sans-serif;
+  --font-serif: var(--font-source-serif), "Source Serif 4", Georgia, "Times New Roman", serif;
+
+  --color-page: #f7f5ef;        /* warm cream, avoids pure-white glare */
+  --color-paper: #ffffff;       /* panels */
+  --color-reading: #fffdf8;     /* long-form reading areas */
+  --color-subtle: #faf8f3;      /* sidebar, quiet rows */
+  --color-muted: #f1eee6;       /* hover, selected-neutral */
+
+  --color-accent: #2457d6;      /* 6.2:1 on white */
+  --color-accent-ink: #1c46b0;  /* hover / pressed */
+  --color-accent-soft: #eef3ff; /* helpful notes, active nav */
+  --color-accent-line: #cfdcfb;
+
+  --color-ink: #1a1a1a;
+  --color-ink2: #5f5f5a;
+  --color-ink3: #8a8a84;
+  --color-line: #e7e3d9;
+  --color-line-strong: #d6d1c4;
+
   --color-green: #2e9d5b;
   --color-amber: #e8a33d;
+  --color-amber-ink: #8f5d0a;
   --color-red: #d9483b;
-  --color-btn: #111111;
+  --color-btn: #2457d6;
 }
 
 :root {
@@ -23,22 +38,23 @@
 }
 
 body {
+  margin: 0;
   background: var(--color-page);
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.6;
   font-family: var(--font-sans);
 }
 
 h1, h2, h3 {
   letter-spacing: -0.01em;
 }
+/* Serif for page titles only: reads as scholarship, Inter does the UI. */
 h1 {
-  color: #111111;
-  font-family: var(--font-sans);
+  color: var(--color-ink);
+  font-family: var(--font-serif);
   font-weight: 600;
-}
-body {
-  line-height: 1.6;
+  letter-spacing: -0.015em;
 }
 
 .tnum {
@@ -50,11 +66,11 @@ body {
   100% { background-position: calc(200px + 100%) 0; }
 }
 .skeleton {
-  border-radius: 8px;
-  background: linear-gradient(90deg, #efefec 0%, #f7f7f5 50%, #efefec 100%);
+  border-radius: 10px;
+  background: linear-gradient(90deg, #efece4 0%, #f8f6f0 50%, #efece4 100%);
   background-size: 200px 100%;
   background-repeat: no-repeat;
-  background-color: #efefec;
+  background-color: #efece4;
   animation: shimmer 1.2s infinite linear;
 }
 
@@ -71,6 +87,19 @@ body {
 }
 .fadein { animation: fadein 0.25s ease both; }
 
+/* Voice: soft rings while someone is talking or listening. */
+@keyframes voice-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+.voice-ring { position: absolute; inset: 0; border-radius: 9999px; animation: voice-ring 1.6s ease-out infinite; }
+.voice-ring.delay { animation-delay: 0.8s; }
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.voice-bar { transform-origin: center; animation: voice-bar 0.9s ease-in-out infinite; }
+
 /* Download PDF: print only the rubric report */
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -82,24 +111,24 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-ink);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-/* Shared geometry follows the compact, neutral application shell. */
-body { margin: 0; line-height: 1.5; }
 button, input, textarea, select { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), a { touch-action: manipulation; }
-.lucide { stroke-width: 1.5; flex-shrink: 0; }
-.viva-frame { height: calc(100dvh - 32px); margin: 16px; border: 1px solid #eaeaea; border-radius: 14px; background: #fff; box-shadow: 0 2px 8px #00000004; overflow: hidden; }
-.viva-sidebar { width: 240px; }
+.lucide { stroke-width: 1.6; flex-shrink: 0; }
+
+/* App frame: fills the window, small margin so the cream page reads as a desk. */
+.viva-frame { height: calc(100dvh - 24px); margin: 12px; border: 1px solid var(--color-line); border-radius: 16px; background: #fff; box-shadow: 0 1px 2px #1a1a1a08, 0 8px 24px #1a1a1a06; overflow: hidden; }
+.viva-sidebar { width: 252px; }
 .viva-main { scrollbar-gutter: stable; }
-.viva-main textarea, .viva-main input, .viva-main select { border-radius: 8px; }
+.viva-main textarea, .viva-main input, .viva-main select { border-radius: 10px; }
 .viva-main table { border-collapse: collapse; }
-.viva-main th { height: 40px; color: #6b6b6b; font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; white-space: nowrap; }
-.viva-main td { height: 44px; }
-.viva-main table tfoot td { height: 36px; color: #6b6b6b; font-size: 12px; background: #fafafa; }
+.viva-main th { height: 40px; color: var(--color-ink2); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+.viva-main td { height: 46px; }
+.viva-main table tfoot td { height: 36px; color: var(--color-ink2); font-size: 12px; background: var(--color-subtle); }
 @media (max-width: 900px) { .viva-sidebar { width: 208px; } .viva-main { padding: 20px; } }
 @media (max-width: 640px) { .viva-frame { height: calc(100dvh - 16px); margin: 8px; } .viva-sidebar { width: 156px; } .viva-main { padding: 16px; } .viva-nav-label { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }

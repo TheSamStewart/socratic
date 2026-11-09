@@ -123,7 +123,7 @@ export default function ChatPanel({
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
       <Card className="flex h-[calc(100dvh-216px)] min-h-[520px] min-w-0 flex-col overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
-          <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-white transition-colors ${isMax ? "bg-[#0f766e]" : "bg-btn"}`}>{isMax ? "M" : "E"}</span>
+          <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-white transition-colors ${isMax ? "bg-accent" : "bg-btn"}`}>{isMax ? "M" : "E"}</span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{isMax ? "Max, a fellow student" : "Viva examiner"}</p>
             <p className="truncate text-xs text-ink2">{subtitle ?? (isMax ? "Max thinks he understands this. Correct him." : "A short conversation about your own work")}</p>
@@ -135,19 +135,19 @@ export default function ChatPanel({
             aria-pressed={muted}
             aria-label={muted ? "Unmute voice" : "Mute voice"}
             title={muted ? "Voice off" : "Voice on"}
-            className={`flex h-8 w-8 items-center justify-center rounded-full border border-line transition-colors ${muted ? "text-ink3" : "text-ink hover:bg-[#f6f6f4]"}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border border-line transition-colors ${muted ? "text-ink3" : "text-ink hover:bg-muted"}`}
           >
             {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
         </div>
 
         {kind === "viva" && isMax && (
-          <div className="fadein flex items-center gap-2 border-b border-line bg-[#e6f4f2] px-5 py-2 text-sm text-[#0b5a54]" role="status">
+          <div className="fadein flex items-center gap-2 border-b border-line bg-accent-soft px-5 py-2 text-sm text-accent-ink" role="status">
             <Wand2 size={14} /> Switching to Teach Max: let&apos;s fix this one first
           </div>
         )}
         {finished && (
-          <div className="border-b border-line bg-[#fafafa] px-5 py-3 text-sm">
+          <div className="border-b border-line bg-subtle px-5 py-3 text-sm">
             <p className="mb-1 font-medium">Viva complete. Your module leader will review it.</p>
             {session.revise.length > 0 && <><p className="text-ink2">Three things worth revising:</p>
             <ol className="list-decimal pl-5 text-ink2">{session.revise.map((r) => <li key={r}>{r}</li>)}</ol></>}
@@ -161,8 +161,8 @@ export default function ChatPanel({
             return (
               <div key={i} className={`fadein flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className="min-w-0 max-w-[88%]">
-                  <p className="mb-2 flex items-center gap-2 text-xs text-ink2">{!mine && <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white ${isMax ? "bg-[#0f766e]" : "bg-ink"}`}>{isMax ? "M" : "E"}</span>}<span className="font-medium">{mine ? "You" : label}</span></p>
-                  <div className={`rounded-xl px-4 py-3 ${mine ? "bg-[#f0f0f0] text-ink" : isMax ? "border border-[#d8eae6] bg-[#f3f9f7]" : "border border-line bg-[#fafafa]"}`}>
+                  <p className="mb-2 flex items-center gap-2 text-xs text-ink2">{!mine && <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white ${isMax ? "bg-accent" : "bg-ink"}`}>{isMax ? "M" : "E"}</span>}<span className="font-medium">{mine ? "You" : label}</span></p>
+                  <div className={`rounded-xl px-4 py-3 ${mine ? "bg-muted text-ink" : isMax ? "border border-accent-line bg-accent-soft" : "border border-line bg-subtle"}`}>
                     <p className="whitespace-pre-wrap break-words leading-relaxed">{t.text}</p>
                   </div>
                 </div>
@@ -184,7 +184,7 @@ export default function ChatPanel({
             {phase === "speaking" && (
               <>
                 <Volume2 size={14} /> <span role="status">{label} is speaking…</span>
-                <button type="button" onClick={() => { stopSpeaking(); setPhase("idle"); }} className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-[#f2f4f8]"><Square size={10} /> Skip</button>
+                <button type="button" onClick={() => { stopSpeaking(); setPhase("idle"); }} className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted"><Square size={10} /> Skip</button>
               </>
             )}
             {!isMax && (

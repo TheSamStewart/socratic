@@ -11,7 +11,7 @@ const ICON = { input_scanned: ScanSearch, injection_blocked: ShieldAlert, output
 const LABEL = { input_scanned: "Input scanned", injection_blocked: "Injection blocked", output_blocked: "Output blocked", escalated: "Sent to a person", passed: "Passed" };
 const PILL: Record<string, string> = {
   injection_blocked: "bg-[#fde8e6] text-[#b42318]", output_blocked: "bg-[#fff6e0] text-[#8f5d0a]",
-  escalated: "bg-[#f5f5f5] text-[#111111]", input_scanned: "bg-[#f5f5f5] text-ink2", passed: "bg-[#e6f4ec] text-[#1e7a43]",
+  escalated: "bg-muted text-accent", input_scanned: "bg-muted text-ink2", passed: "bg-[#e6f4ec] text-[#1e7a43]",
 };
 
 export default function Agents() {
@@ -59,12 +59,12 @@ export default function Agents() {
       </div>
 
       <Card className="mb-6 overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1fr)_64px] md:grid-cols-[minmax(0,1fr)_64px_120px] gap-4 border-b border-line bg-[#fafafa] px-5 py-3 text-xs text-ink2"><span>Agent and responsibility</span><span className="text-right">Calls</span><span className="hidden text-right md:block">Last activity</span></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_64px] md:grid-cols-[minmax(0,1fr)_64px_120px] gap-4 border-b border-line bg-subtle px-5 py-3 text-xs text-ink2"><span>Agent and responsibility</span><span className="text-right">Calls</span><span className="hidden text-right md:block">Last activity</span></div>
         <div className="divide-y divide-line">
           {data.agents.map((a) => (
-            <div key={a.name} className="grid grid-cols-[minmax(0,1fr)_64px] md:grid-cols-[minmax(0,1fr)_64px_120px] items-center gap-4 px-5 py-4 hover:bg-[#fafafa]">
+            <div key={a.name} className="grid grid-cols-[minmax(0,1fr)_64px] md:grid-cols-[minmax(0,1fr)_64px_120px] items-center gap-4 px-5 py-4 hover:bg-subtle">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-[#fafafa] text-ink2"><Bot size={18} /></span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-subtle text-ink2"><Bot size={18} /></span>
                 <div className="min-w-0"><h3 className="text-sm font-medium">{a.name}</h3><p className="mt-0.5 break-words text-[13px] text-ink2">{a.role}</p></div>
               </div>
               <span className="tnum text-right text-sm font-medium">{a.calls}</span>
@@ -83,7 +83,7 @@ export default function Agents() {
               const bad = e.action === "injection_blocked" || e.action === "output_blocked";
               return (
                 <li key={`${e.ts}-${i}`} className="flex items-start gap-3">
-                  <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${bad ? "bg-[#d9483b1f] text-red" : "bg-[#f5f5f5] text-ink2"}`}><Icon size={13} /></span>
+                  <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${bad ? "bg-[#d9483b1f] text-red" : "bg-muted text-ink2"}`}><Icon size={13} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 text-sm"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PILL[e.action] ?? PILL.passed}`}>{LABEL[e.action as keyof typeof LABEL] ?? e.action.replaceAll("_", " ")}</span><span className="text-ink2">{e.agent}</span></p>
                     <p className="mt-0.5 break-words text-ink2">{e.detail}</p>

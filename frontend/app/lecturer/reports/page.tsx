@@ -66,14 +66,14 @@ export default function Reports() {
       ) : (
         <Card className="overflow-x-auto !rounded-xl">
           <table className="w-full min-w-[560px] text-left">
-            <thead className="border-b border-line bg-[#fafafa] text-xs text-ink2">
+            <thead className="border-b border-line bg-subtle text-xs text-ink2">
               <tr><th className="px-4 py-2.5 font-semibold">Student</th><th className="px-4 py-2.5 font-semibold">Rubric</th><th className="px-4 py-2.5 font-semibold">Viva</th><th className="px-4 py-2.5 font-semibold">Flags</th></tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.s.id} onClick={() => setOpenId(r.s.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") setOpenId(r.s.id); }}
-                  className="cursor-pointer border-b border-line outline-none last:border-0 hover:bg-[#fafafa] focus-visible:bg-[#f5f5f5]">
-                  <td className="px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-[#fafafa] text-xs text-ink2">{r.name.slice(0, 1)}</span><div><p className="font-medium">{r.name}</p><p className="mt-0.5 text-xs text-ink2">CMP2045 · Student submission</p></div></div></td>
+                  className="cursor-pointer border-b border-line outline-none last:border-0 hover:bg-subtle focus-visible:bg-muted">
+                  <td className="px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-subtle text-xs text-ink2">{r.name.slice(0, 1)}</span><div><p className="font-medium">{r.name}</p><p className="mt-0.5 text-xs text-ink2">CMP2045 · Student submission</p></div></div></td>
                   <td className="px-4 py-3"><span className="flex gap-1.5">{r.rubric.map((s, i) => <Dot key={i} status={s} size={10} />)}</span></td>
                   <td className="px-4 py-3 text-ink2">
                     {r.viva === "Awaiting your decision" ? <span className="rounded-full bg-[#fde8e6] px-2.5 py-1 text-xs font-medium text-[#b42318]">{r.viva}</span> : r.viva}
@@ -92,7 +92,7 @@ export default function Reports() {
           <aside className="fadein h-full w-full max-w-md overflow-y-auto border-l border-line bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()} aria-label="Student report">
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-lg font-semibold">{open.student}</h2>
-              <button onClick={() => setOpenId(null)} aria-label="Close" className="rounded p-1 hover:bg-[#f6f6f4]"><X size={16} /></button>
+              <button onClick={() => setOpenId(null)} aria-label="Close" className="rounded p-1 hover:bg-muted"><X size={16} /></button>
             </div>
             <p className="mb-4 text-xs text-ink2">Evidence, not verdicts. You make the final call.</p>
 

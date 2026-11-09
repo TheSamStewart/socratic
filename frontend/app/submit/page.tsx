@@ -12,7 +12,7 @@ import { errorText, submitWork } from "@/lib/viva";
 import type { Session } from "@/lib/types";
 
 const STATUS: Record<AssessStatus, { label: string; cls: string }> = {
-  not_started: { label: "Not submitted", cls: "bg-[#f5f5f5] text-ink2" },
+  not_started: { label: "Not submitted", cls: "bg-muted text-ink2" },
   viva_due: { label: "Viva to do", cls: "bg-[#fde8e6] text-[#b42318]" },
   awaiting_review: { label: "With your module leader", cls: "bg-[#fff6e0] text-[#8f5d0a]" },
   reviewed: { label: "Reviewed", cls: "bg-[#e6f4ec] text-[#1e7a43]" },
@@ -99,7 +99,7 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
 
   if (busy)
     return (
-      <div className="border-t border-line bg-[#fafafa] p-5" role="status" aria-live="polite">
+      <div className="border-t border-line bg-subtle p-5" role="status" aria-live="polite">
         <p className="mb-3 text-sm font-semibold">Your work is being checked</p>
         <ol className="space-y-2.5">
           {steps.map((label, i) => {
@@ -107,8 +107,8 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
             const active = step === i;
             return (
               <li key={label} className={`flex items-center gap-3 text-sm ${done || active ? "text-ink" : "text-ink3"}`}>
-                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${done ? "bg-green text-white" : active ? "border border-[#111111]" : "border border-line"}`}>
-                  {done ? <Check size={12} /> : active ? <Loader2 size={12} className="animate-spin text-[#111111]" /> : null}
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${done ? "bg-green text-white" : active ? "border border-accent" : "border border-line"}`}>
+                  {done ? <Check size={12} /> : active ? <Loader2 size={12} className="animate-spin text-accent" /> : null}
                 </span>
                 <span>{label.replace("…", done ? "" : "…")}</span>
               </li>
@@ -125,7 +125,7 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
     );
 
   return (
-    <div className="border-t border-line bg-[#fafafa] p-5">
+    <div className="border-t border-line bg-subtle p-5">
       <div className="mb-2 flex items-center justify-between">
         <label className="text-sm font-medium" htmlFor={`w-${a.id}`}>Your work</label>
         <button type="button" onClick={() => input.current?.click()} className="text-xs text-ink2 underline-offset-2 hover:underline">Upload .txt / code file</button>
@@ -141,7 +141,7 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
         onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
         onDrop={onDrop}
-        className={`relative rounded-xl border-2 border-dashed outline-none focus-visible:ring-2 focus-visible:ring-[#111111] ${dragging ? "border-[#111111] bg-[#f5f5f5]" : "border-[#dedede] bg-white"}`}
+        className={`relative rounded-xl border-2 border-dashed outline-none focus-visible:ring-2 focus-visible:ring-accent ${dragging ? "border-accent bg-muted" : "border-line-strong bg-white"}`}
       >
         <textarea
           id={`w-${a.id}`}
@@ -154,15 +154,15 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
         />
         {!text && !file && !dragging && (
           <div id={`drop-${a.id}`} className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-            <Upload size={24} className="text-[#111111]" />
-            <p className="text-sm font-semibold text-[#111111]">
+            <Upload size={24} className="text-accent" />
+            <p className="text-sm font-semibold text-accent">
               Drag your file here or <button type="button" onClick={() => input.current?.click()} className="pointer-events-auto underline underline-offset-2">click to browse</button>
             </p>
             <p className="text-xs text-ink2">{ALLOWED.join(", ")} up to 5 MB. Or click in the box and paste your text.</p>
           </div>
         )}
         {dragging && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded bg-[#f5f5f5]/90 text-sm font-semibold text-[#111111]">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded bg-muted/90 text-sm font-semibold text-accent">
             <Upload size={16} className="mr-2" /> Drop your file to upload
           </div>
         )}
@@ -173,7 +173,7 @@ function Uploader({ a, onDone }: { a: Assessment; onDone: () => void }) {
           <FileText size={14} className="shrink-0 text-ink2" />
           <span className="truncate font-medium">{file.name}</span>
           <span className="shrink-0 text-xs text-ink3">{size(file.size)}</span>
-          <button type="button" onClick={clearFile} aria-label={`Remove ${file.name}`} className="shrink-0 rounded p-0.5 text-ink2 hover:bg-[#f5f5f5]"><X size={14} /></button>
+          <button type="button" onClick={clearFile} aria-label={`Remove ${file.name}`} className="shrink-0 rounded p-0.5 text-ink2 hover:bg-muted"><X size={14} /></button>
         </div>
       )}
       {file && fileText === null && <p className="mt-1 text-xs text-ink2">We&apos;ll read this file when you submit.</p>}
@@ -241,7 +241,7 @@ export default function Submit() {
                   </Link>
                 )}
                 {a.status === "awaiting_review" && <span className="flex items-center gap-1.5 text-sm text-ink2"><CheckCircle2 size={14} className="text-green" /> Viva done, waiting for a person to review</span>}
-                {a.status === "reviewed" && <Link href="/rubric?tab=assess" className="text-sm font-medium text-[#111111] underline-offset-2 hover:underline">See feedback</Link>}
+                {a.status === "reviewed" && <Link href="/rubric?tab=assess" className="text-sm font-medium text-accent underline-offset-2 hover:underline">See feedback</Link>}
               </div>
               {open === a.id && a.status === "not_started" && <Uploader a={a} onDone={() => setOpen(null)} />}
             </Card>

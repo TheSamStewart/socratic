@@ -27,7 +27,7 @@ export default function Escalations() {
   return (
     <>
       <PageTitle title="Student questions" sub="Questions the brief couldn't answer, grouped by what students actually mean. Answer once and everyone is told." />
-      {queueError && <div className="mb-4 flex items-center gap-3 rounded border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3 text-sm" role="alert"><span className="flex-1 text-[#b42318]">Couldn't reach Viva. Try again.</span><button onClick={refreshQueue} className="rounded border border-line bg-white px-3 py-1.5 font-medium hover:bg-[#f6f6f4]">Retry</button></div>}
+      {queueError && <div className="mb-4 flex items-center gap-3 rounded border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3 text-sm" role="alert"><span className="flex-1 text-[#b42318]">Couldn't reach Viva. Try again.</span><button onClick={refreshQueue} className="rounded border border-line bg-white px-3 py-1.5 font-medium hover:bg-muted">Retry</button></div>}
       {sendErr && <p className="mb-3 text-sm text-[#b42318]" role="alert">{sendErr}</p>}
       {!loaded && !queueError && <Skeleton className="h-40 w-full" />}
       {loaded && !queueError && sorted.length === 0 && <Empty icon={<Inbox size={18} />} title="Nothing to answer" body="When students ask something the brief doesn't cover, it appears here." />}
@@ -36,7 +36,7 @@ export default function Escalations() {
           <Card key={c.id} className="fadein overflow-hidden p-5">
             <div className="mb-3 flex items-start gap-3">
               <h3 className="flex min-w-0 flex-1 items-start gap-2 text-sm font-medium"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red" />{c.summary}</h3>
-              <span className="tnum flex shrink-0 items-center gap-1.5 rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium"><Users size={12} /> {c.students.length} students</span>
+              <span className="tnum flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium"><Users size={12} /> {c.students.length} students</span>
             </div>
             <ul className="mb-4 space-y-1 border-l border-line pl-4 text-[13px] text-ink2">
               {c.questions.slice(0, 4).map((q, i) => <li key={`${q}-${i}`}>“{q}”</li>)}

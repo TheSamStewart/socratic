@@ -9,18 +9,9 @@ import {
 } from "lucide-react";
 import { useApp } from "./AppProvider";
 import { NotifBadge } from "./ui";
+import Logo from "./Logo";
 
 type Item = { href: string; label: string; icon: LucideIcon; badge?: number };
-
-function Crest() {
-  // Simple shield mark, not a real university crest.
-  return (
-    <svg width="19" height="23" viewBox="0 0 30 34" aria-hidden>
-      <path d="M15 1 28 6v11c0 8-6 13.5-13 16C8 30.500 2 25 2 17V6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M9 11l6 11 6-11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 const ago = (t: number) => {
   const m = Math.max(0, Math.round((Date.now() - t) / 60000));
@@ -70,13 +61,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="viva-frame flex">
-      <aside className="viva-sidebar no-print flex min-h-0 shrink-0 flex-col border-r border-line bg-[#fafafa]" aria-label="Module menu">
-        <div className="flex h-[60px] shrink-0 items-center gap-2.5 px-4">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink text-white"><Crest /></span>
-          <span className="text-base font-semibold tracking-tight">Socratic</span>
-          <span className="ml-auto rounded border border-line bg-white px-1.5 py-0.5 text-[10px] text-ink2">CMP2045</span>
+      <aside className="viva-sidebar no-print flex min-h-0 shrink-0 flex-col border-r border-line bg-subtle" aria-label="Module menu">
+        <div className="flex h-[68px] shrink-0 items-center gap-2 px-4">
+          <Logo sub="Learn by being asked" />
+          <span className="ml-auto rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink2">CMP2045</span>
         </div>
-        <div className="mx-3 mb-5 flex rounded-lg border border-line bg-[#f0f0f0] p-0.5 text-xs" role="tablist" aria-label="View as">
+        <div className="mx-3 mb-5 flex rounded-lg border border-line bg-muted p-0.5 text-xs" role="tablist" aria-label="View as">
           {(["student", "lecturer"] as const).map((r) => (
             <button key={r} role="tab" aria-selected={role === r} onClick={() => switchRole(r)}
               className={`flex-1 rounded-md px-2 py-1.5 capitalize transition-colors ${role === r ? "bg-white font-medium text-ink shadow-sm" : "text-ink2 hover:text-ink"}`}>
@@ -87,7 +77,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <nav className="min-h-0 flex-1 overflow-y-auto px-2">
           {groups.map((g) => (
             <div key={g.label} className="mb-6">
-              <p className="px-3 pb-2 text-xs text-[#8a8a8a]">{g.label}</p>
+              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-ink3">{g.label}</p>
               <ul className="space-y-0.5">
                 {g.items.map((it) => {
                   const active = path === it.href || path.startsWith(it.href + "/");
@@ -95,8 +85,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   return (
                     <li key={it.href}>
                       <Link href={it.href} aria-current={active ? "page" : undefined}
-                        className={`flex min-h-8 items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${active ? "bg-[#f0f0f0] font-medium text-ink" : "text-ink2 hover:bg-[#f3f3f3] hover:text-ink"}`}>
-                        <Icon size={16} strokeWidth={1.5} />
+                        className={`flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition-colors ${active ? "bg-accent-soft font-medium text-accent-ink shadow-[inset_3px_0_0_var(--color-accent)]" : "text-ink2 hover:bg-muted hover:text-ink"}`}>
+                        <Icon size={17} strokeWidth={active ? 1.9 : 1.6} />
                         <span className="viva-nav-label min-w-0 flex-1">{it.label}</span>
                         {it.href === "/lecturer/escalations" ? <NotifBadge count={it.badge ?? 0} /> : !!it.badge && <span className="tnum text-xs text-ink2">{it.badge}</span>}
                       </Link>
@@ -107,41 +97,48 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="mx-4 mb-4 flex gap-2 rounded-lg border border-line bg-white p-3 text-xs text-ink2">
-          <ShieldCheck size={14} className="mt-0.5" />
+        <div className="mx-4 mb-4 flex gap-2 rounded-lg border border-accent-line bg-accent-soft p-3 text-xs text-ink2">
+          <ShieldCheck size={14} className="mt-0.5 text-accent" />
           <span>Evidence, not verdicts.<br />A person makes the final call.</span>
         </div>
         <div className="flex shrink-0 items-center gap-2.5 border-t border-line px-4 py-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-xs font-medium">{role === "student" ? "AK" : "ML"}</span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">{role === "student" ? "AK" : "ML"}</span>
           <div className="min-w-0"><p className="truncate text-[13px] font-medium">{role === "student" ? "Aisha Khan" : "Module leader"}</p><p className="text-xs text-ink2">CMP2045 · Manchester</p></div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print relative z-30 flex h-[52px] shrink-0 items-center justify-between gap-4 border-b border-line bg-white px-6">
-          <p className="truncate text-[13px] text-ink2">My modules <span className="mx-2 text-[#c5c5c5]">/</span> CMP2045 <span className="mx-2 text-[#c5c5c5]">/</span><span className="text-ink">{current}</span></p>
-          <div className="relative">
-            <button onClick={() => setBell((b) => !b)} aria-label={`Notifications, ${unread} unread`} aria-expanded={bell} className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-ink2 hover:bg-[#f5f5f5]">
-              <Bell size={16} />
-              {unread > 0 && <span className="absolute -right-1 -top-1"><NotifBadge count={unread} /></span>}
-            </button>
-            {bell && (
-              <div className="absolute right-0 top-10 w-80 max-w-[calc(100vw-48px)] rounded-xl border border-line bg-white text-ink shadow-lg">
-                <p className="border-b border-line px-4 py-3 text-sm font-medium">Notifications</p>
-                {mine.length === 0 && <p className="px-4 py-6 text-center text-ink2">You&apos;re all caught up.</p>}
-                <ul className="max-h-80 overflow-y-auto">
-                  {mine.slice(0, 8).map((n) => (
-                    <li key={n.id}><button onClick={() => { setBell(false); router.push(n.href); }} className="flex w-full items-start gap-2.5 border-b border-line px-4 py-3 text-left last:border-0 hover:bg-[#fafafa]">
-                      <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-red"}`} />
-                      <span className="min-w-0 flex-1"><span className="block text-[13px]">{n.text}</span><span className="text-xs text-ink2">{ago(n.at)}</span></span>
-                    </button></li>
-                  ))}
-                </ul>
-              </div>
+        <header className="no-print relative z-30 flex h-[56px] shrink-0 items-center justify-between gap-4 border-b border-line bg-white px-8">
+          <p className="truncate text-[13px] text-ink2">My modules <span className="mx-2 text-line-strong">/</span> CMP2045 Research Methods <span className="mx-2 text-line-strong">/</span><span className="font-medium text-ink">{current}</span></p>
+          <div className="flex items-center gap-2">
+            {role === "student" && !path.startsWith("/teach") && !path.startsWith("/submit/viva") && (
+              <Link href="/teach" className="hidden h-8 items-center gap-1.5 rounded-full border border-accent-line bg-accent-soft px-3 text-[13px] font-medium text-accent-ink transition-colors hover:bg-[#e2eaff] sm:inline-flex">
+                <MessageCircle size={14} /> Talk to Max
+              </Link>
             )}
+            <div className="relative">
+              <button onClick={() => setBell((b) => !b)} aria-label={`Notifications, ${unread} unread`} aria-expanded={bell} className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-ink2 hover:bg-muted">
+                <Bell size={16} />
+                {unread > 0 && <span className="absolute -right-1 -top-1"><NotifBadge count={unread} /></span>}
+              </button>
+              {bell && (
+                <div className="absolute right-0 top-10 w-80 max-w-[calc(100vw-48px)] rounded-xl border border-line bg-white text-ink shadow-lg">
+                  <p className="border-b border-line px-4 py-3 text-sm font-medium">Notifications</p>
+                  {mine.length === 0 && <p className="px-4 py-6 text-center text-ink2">You&apos;re all caught up.</p>}
+                  <ul className="max-h-80 overflow-y-auto">
+                    {mine.slice(0, 8).map((n) => (
+                      <li key={n.id}><button onClick={() => { setBell(false); router.push(n.href); }} className="flex w-full items-start gap-2.5 border-b border-line px-4 py-3 text-left last:border-0 hover:bg-subtle">
+                        <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-red"}`} />
+                        <span className="min-w-0 flex-1"><span className="block text-[13px]">{n.text}</span><span className="text-xs text-ink2">{ago(n.at)}</span></span>
+                      </button></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </header>
-        <main className="viva-main min-h-0 min-w-0 flex-1 overflow-y-auto bg-white p-6">
-          <div className="mx-auto max-w-6xl">{children}</div>
+        <main className="viva-main min-h-0 min-w-0 flex-1 overflow-y-auto bg-white px-8 py-7">
+          <div className="mx-auto w-full max-w-[1680px]">{children}</div>
         </main>
       </div>
     </div>

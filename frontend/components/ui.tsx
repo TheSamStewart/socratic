@@ -48,7 +48,7 @@ export function PrimaryButton({ className = "", ...p }: ButtonHTMLAttributes<HTM
   return (
     <button
       {...p}
-      className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-btn px-3.5 text-sm font-medium text-white transition-colors hover:bg-[#292929] disabled:cursor-not-allowed disabled:bg-[#cfcfcc] ${className}`}
+      className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-btn px-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-line-strong ${className}`}
     />
   );
 }
@@ -57,7 +57,7 @@ export function GhostButton({ className = "", ...p }: ButtonHTMLAttributes<HTMLB
   return (
     <button
       {...p}
-      className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink transition-colors hover:bg-[#f6f6f4] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     />
   );
 }
@@ -69,7 +69,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 export function Empty({ icon, title, body, action }: { icon: ReactNode; title: string; body: string; action?: ReactNode }) {
   return (
     <Card className="mx-auto mt-10 flex max-w-md flex-col items-center gap-2 p-8 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3f3f1] text-ink2">{icon}</div>
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-ink2">{icon}</div>
       <h2 className="text-base font-semibold">{title}</h2>
       <p className="text-ink2">{body}</p>
       {action}
@@ -77,11 +77,58 @@ export function Empty({ icon, title, body, action }: { icon: ReactNode; title: s
   );
 }
 
-export function PageTitle({ title, sub }: { title: string; sub?: string }) {
+export function PageTitle({ title, sub, eyebrow, actions }: { title: string; sub?: string; eyebrow?: string; actions?: ReactNode }) {
   return (
-    <div className="mb-6">
-      <h1 className="text-xl font-semibold leading-7">{title}</h1>
-      {sub && <p className="mt-1 text-[13px] leading-5 text-ink2">{sub}</p>}
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0 max-w-3xl">
+        {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>}
+        <h1 className="text-[28px] leading-tight">{title}</h1>
+        {sub && <p className="mt-2 text-[15px] leading-relaxed text-ink2">{sub}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** A soft blue note: tips, "how this works", next steps. */
+export function Note({ icon, title, children, className = "" }: { icon?: ReactNode; title?: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={`flex gap-3 rounded-xl border border-accent-line bg-accent-soft p-4 text-sm text-ink ${className}`}>
+      {icon && <span className="mt-0.5 shrink-0 text-accent">{icon}</span>}
+      <div className="min-w-0">
+        {title && <p className="mb-0.5 font-semibold">{title}</p>}
+        <div className="leading-relaxed text-ink2">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Numbered steps, used for "how it works" side panels. */
+export function Steps({ items, current = -1 }: { items: { title: string; body: string }[]; current?: number }) {
+  return (
+    <ol className="space-y-4">
+      {items.map((s, i) => (
+        <li key={s.title} className="flex gap-3">
+          <span className={`tnum flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${i < current ? "bg-green text-white" : i === current ? "bg-accent text-white" : "border border-line-strong bg-white text-ink2"}`}>{i + 1}</span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-6">{s.title}</p>
+            <p className="text-[13px] leading-relaxed text-ink2">{s.body}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Thin labelled progress line (green share of a whole). */
+export function ProgressLine({ value, total, label }: { value: number; total: number; label?: string }) {
+  const pct = total ? Math.round((value / total) * 100) : 0;
+  return (
+    <div>
+      {label && <div className="mb-1.5 flex justify-between text-xs text-ink2"><span>{label}</span><span className="tnum">{value} of {total}</span></div>}
+      <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={value} aria-label={label}>
+        <div className="h-full rounded-full bg-green transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
