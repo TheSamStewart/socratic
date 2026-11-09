@@ -172,26 +172,5 @@ export const getHeatmap = () => call<HeatmapRow[]>("/api/lecturer/heatmap", unde
 export const getAgents = () =>
   call<{ agents: AgentCard[]; log: GuardianEvent[] }>("/api/agents", undefined, () => clone(AGENTS_FIXTURE));
 
-export type VoiceSource = "elevenlabs" | "none";
-let currentAudio: HTMLAudioElement | null = null;
-
-export function stopSpeaking() {
-  try { currentAudio?.pause(); currentAudio = null; } catch { /* ignore */ }
-}
-
-/** Speaks through ElevenLabs (backend /api/tts, key stays server side). On 503 or any failure it quietly stays text only. */
-export async function speak(text: string, voice: "examiner" | "max"): Promise<VoiceSource> {
-  stopSpeaking();
-  try {
-    const res = await fetch(`${API}/api/tts`, json({ text, voice }));
-    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("audio")) return "none";
-    const audio = new Audio(URL.createObjectURL(await res.blob()));
-    currentAudio = audio;
-    await new Promise<void>((resolve, reject) => {
-      audio.onended = () => resolve();
-      audio.onerror = () => reject(new Error("audio"));
-      audio.play().catch(reject);
-    });
-    return "elevenlabs";
-  } catch { return "none"; }
-}
+// Voice lives in ./speech (ElevenLabs with a browser-voice fallback).
+export { speak, stopSpeaking, type VoiceSource } from "./speech";

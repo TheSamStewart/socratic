@@ -22,7 +22,14 @@ type SpeechWindow = typeof window & {
   webkitSpeechRecognition?: new () => Recognition;
 };
 
+export const dictationSupported = () => {
+  if (typeof window === "undefined") return false;
+  const w = window as SpeechWindow;
+  return !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
+};
+
 const MAX_HEIGHT = 200; // px, then the box scrolls
+const PAUSE_MS = 1800; // hands-free: this much silence after speech sends the answer
 
 export default function Composer({
   placeholder,
@@ -30,6 +37,8 @@ export default function Composer({
   onListeningChange,
   disabled = false,
   sending = false,
+  listenSignal = 0,
+  handsFree = false,
 }: {
   placeholder: string;
   onSend: (text: string) => void;
@@ -37,6 +46,10 @@ export default function Composer({
   onListeningChange?: (listening: boolean) => void;
   disabled?: boolean;
   sending?: boolean;
+  /** Each time this number goes up, the mic opens (voice mode: "your turn"). */
+  listenSignal?: number;
+  /** Send automatically after a pause in speech. */
+  handsFree?: boolean;
 }) {
   const [text, setText] = useState("");
   const [interim, setInterim] = useState("");
@@ -45,13 +58,15 @@ export default function Composer({
   const [dictationOk, setDictationOk] = useState<boolean | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const recRef = useRef<Recognition | null>(null);
-  const listeningRef = useRef<(l: boolean) => void>(() => {});
-  listeningRef.current = (l) => onListeningChange?.(l);
+  const textRef = useRef(text);
+  textRef.current = text;
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cbRef = useRef({ onSend, onListeningChange, handsFree, disabled, sending });
+  cbRef.current = { onSend, onListeningChange, handsFree, disabled, sending };
 
   useEffect(() => {
-    const w = window as SpeechWindow;
-    setDictationOk(!!(w.SpeechRecognition ?? w.webkitSpeechRecognition));
-    return () => recRef.current?.abort();
+    setDictationOk(dictationSupported());
+    return () => { recRef.current?.abort(); if (pauseTimer.current) clearTimeout(pauseTimer.current); };
   }, []);
 
   // Grow with the text, up to MAX_HEIGHT.
@@ -63,18 +78,34 @@ export default function Composer({
     el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
   }, [text, interim]);
 
+  const clearPause = () => { if (pauseTimer.current) { clearTimeout(pauseTimer.current); pauseTimer.current = null; } };
+
   const stopListening = () => {
-    recRef.current?.stop();
+    clearPause();
+    const r = recRef.current;
     recRef.current = null;
+    r?.stop();
     setListening(false);
     setInterim("");
-    listeningRef.current(false);
+    cbRef.current.onListeningChange?.(false);
+  };
+
+  const sendValue = (raw: string) => {
+    const value = raw.trim();
+    const { disabled: d, sending: s } = cbRef.current;
+    if (!value || d || s) return false;
+    if (recRef.current) stopListening();
+    setText("");
+    setInterim("");
+    cbRef.current.onSend(value);
+    return true;
   };
 
   const startListening = () => {
     const w = window as SpeechWindow;
     const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) { setDictationOk(false); return; }
+    if (recRef.current) return;
     const r = new SR();
     r.lang = "en-GB";
     r.continuous = true;
@@ -88,34 +119,49 @@ export default function Composer({
         else interimText += piece;
       }
       if (finalText.trim()) {
-        setText((t) => (t.trim() ? `${t.replace(/\s+$/, "")} ${finalText.trim()}` : finalText.trim()));
+        const t = textRef.current;
+        const next = t.trim() ? `${t.replace(/\s+$/, "")} ${finalText.trim()}` : finalText.trim();
+        textRef.current = next;
+        setText(next);
       }
       setInterim(interimText.trim());
+      // Hands-free: wait for a pause, then send what was said.
+      if (cbRef.current.handsFree) {
+        clearPause();
+        pauseTimer.current = setTimeout(() => { if (recRef.current === r) sendValue(textRef.current); }, PAUSE_MS);
+      }
     };
     r.onerror = (e) => {
       // No microphone or no permission: dictation can't work here, so hide it.
       if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") setDictationOk(false);
-      stopListening();
+      if (recRef.current === r) stopListening();
     };
     r.onend = () => {
-      if (recRef.current === r) stopListening();
+      if (recRef.current !== r) return;
+      // The browser ended the session (long silence). In hands-free mode, send what we have.
+      const pending = textRef.current;
+      stopListening();
+      if (cbRef.current.handsFree && pending.trim()) sendValue(pending);
     };
     recRef.current = r;
     setListening(true);
-    listeningRef.current(true);
+    cbRef.current.onListeningChange?.(true);
     try { r.start(); } catch { setDictationOk(false); stopListening(); }
   };
+
+  // Voice mode: the panel tells us when it's the student's turn.
+  useEffect(() => {
+    if (listenSignal > 0 && dictationSupported() && !cbRef.current.disabled) startListening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listenSignal]);
+
+  // Stop listening if the panel becomes busy or disabled underneath us.
+  useEffect(() => { if ((disabled || sending) && recRef.current) stopListening(); }, [disabled, sending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSend = text.trim().length > 0 && !disabled && !sending;
 
   const send = () => {
-    if (!canSend) return;
-    if (listening) stopListening();
-    const value = text.trim();
-    setText("");
-    setInterim("");
-    onSend(value);
-    areaRef.current?.focus();
+    if (sendValue(text)) areaRef.current?.focus();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -123,9 +169,9 @@ export default function Composer({
   };
 
   return (
-    <div className="border-t border-line p-3">
+    <div className="border-t border-line bg-subtle p-4">
       <div
-        className={`rounded-2xl border bg-white ${listening ? "border-[#e5372a]" : "border-line-strong focus-within:border-neutral-400"}`}
+        className={`rounded-2xl border bg-white shadow-sm transition-colors ${listening ? "border-accent ring-4 ring-accent/10" : "border-line-strong focus-within:border-accent"}`}
       >
         <textarea
           ref={areaRef}
@@ -134,7 +180,7 @@ export default function Composer({
           onKeyDown={onKeyDown}
           rows={1}
           disabled={disabled}
-          placeholder={interim ? "" : placeholder}
+          placeholder={interim ? "" : listening ? "Listening… just speak" : placeholder}
           aria-label="Your answer"
           className="block w-full resize-none rounded-none border-0 bg-transparent px-4 pb-1 pt-3 text-[15px] leading-6 shadow-none outline-none ring-0 placeholder:text-ink3 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:text-ink3"
           // globals.css sets an unlayered :focus-visible outline that beats utility classes; inline wins.
@@ -144,18 +190,25 @@ export default function Composer({
           <p className="px-4 pb-1 text-[15px] leading-6 text-ink3" aria-live="polite">{interim}</p>
         )}
         <div className="flex items-center justify-end gap-2 px-2 pb-2">
-          {listening && <span className="mr-auto pl-2 text-xs text-[#b42318]" role="status">Listening… tap to stop</span>}
-          {dictationOk === false && (
-            <span className="mr-auto pl-2 text-xs text-ink3" title="Dictation works in Chrome">Dictation works in Chrome</span>
+          {listening && (
+            <span className="mr-auto flex items-center gap-2 pl-2 text-xs font-medium text-accent" role="status">
+              <span className="flex h-3 items-end gap-0.5" aria-hidden>
+                {[0, 1, 2, 3].map((i) => <span key={i} className="voice-bar block h-3 w-0.5 rounded bg-accent" style={{ animationDelay: `${i * 0.12}s` }} />)}
+              </span>
+              {handsFree ? "Listening. Pause when you're done and it sends itself." : "Listening… tap to stop"}
+            </span>
+          )}
+          {!listening && dictationOk === false && (
+            <span className="mr-auto pl-2 text-xs text-ink3">Speaking your answer works in Chrome and Edge. You can type here instead.</span>
           )}
           {dictationOk && (
             <button
               type="button"
               onClick={listening ? stopListening : startListening}
               disabled={disabled}
-              aria-label={listening ? "Stop dictating" : "Dictate your answer"}
+              aria-label={listening ? "Stop listening" : "Speak your answer"}
               aria-pressed={listening}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${listening ? "bg-[#e5372a] text-white ring-4 ring-[#e5372a]/25" : "text-ink2 hover:bg-muted"}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${listening ? "bg-accent text-white" : "text-ink2 hover:bg-muted"}`}
             >
               {listening ? <Square size={14} /> : <Mic size={18} />}
             </button>
@@ -165,7 +218,7 @@ export default function Composer({
             onClick={send}
             disabled={!canSend}
             aria-label="Send"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-ink disabled:bg-[#e3e3e0] disabled:text-ink3"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-ink disabled:bg-muted disabled:text-ink3"
           >
             {sending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} />}
           </button>
