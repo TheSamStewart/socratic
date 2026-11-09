@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { Check, CheckCircle2, Clock, FileText, Info, Loader2, Mic, RotateCcw, ShieldAlert, Upload, X } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
-import { Card, GhostButton, NotifBadge, PageTitle, PrimaryButton } from "@/components/ui";
+import { Card, GhostButton, Note, NotifBadge, PageTitle, PrimaryButton, Steps } from "@/components/ui";
 import { ESSAY_TEXT } from "@/lib/fixtures";
 import type { Assessment, AssessStatus } from "@/lib/course";
 import { errorText, submitWork } from "@/lib/viva";
@@ -198,55 +198,84 @@ export default function Submit() {
   const [open, setOpen] = useState<string | null>(null);
   const due = assessments.filter((a) => a.status === "viva_due");
 
+  const done = assessments.filter((a) => a.status === "awaiting_review" || a.status === "reviewed").length;
+  const weightDone = assessments.filter((a) => a.status !== "not_started").reduce((n, a) => n + a.weight, 0);
+  const stage = assessments.some((a) => a.status === "viva_due") ? 2 : assessments.some((a) => a.status === "awaiting_review") ? 3 : assessments.some((a) => a.status === "reviewed") ? 4 : 0;
+
   return (
     <>
-      <PageTitle title="Submit work" sub="Upload each piece of work for this module. After every submission you'll have a short voice viva about it." />
+      <PageTitle eyebrow="Assessment" title="Submit work" sub="Upload each piece of work for this module. After every submission you'll have a short spoken viva about it, so you can show you understand what you wrote." />
 
       {due.length > 0 && (
-        <div className="fadein mb-5 flex items-center gap-3 rounded-md border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3" role="status">
+        <div className="fadein mb-6 flex items-center gap-3 rounded-xl border border-[#f5c2bd] bg-[#fff5f4] px-5 py-4" role="status">
           <NotifBadge count={due.length} label="vivas to do" />
-          <p className="flex-1 text-sm"><span className="font-semibold">Next step:</span> do your viva with the voice agent. It takes about 5 minutes.</p>
+          <p className="flex-1 text-[15px]"><span className="font-semibold">Next step:</span> talk through your work with the viva examiner. It takes about 5 minutes.</p>
           <Link href={`/submit/viva/${due[0].id}`}><PrimaryButton><Mic size={14} /> Start viva</PrimaryButton></Link>
         </div>
       )}
 
-      <div className="mb-4 flex items-start gap-2 rounded border border-line bg-white px-3 py-2.5 text-sm text-ink2">
-        <Info size={16} className="mt-0.5 shrink-0" />
-        The marking rubric is already set by your module leader. A viva checks you understand your own work. It isn&apos;t a grade, and a person makes the final decision.
-      </div>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="p-5"><p className="text-xs text-ink2">Pieces of work</p><p className="tnum mt-1 font-serif text-3xl font-semibold">{assessments.length}</p></Card>
+            <Card className="p-5"><p className="text-xs text-ink2">Vivas completed</p><p className="tnum mt-1 font-serif text-3xl font-semibold">{done}<span className="text-lg text-ink3"> / {assessments.length}</span></p></Card>
+            <Card className="p-5"><p className="text-xs text-ink2">Module weight submitted</p><p className="tnum mt-1 font-serif text-3xl font-semibold">{weightDone}%</p></Card>
+          </div>
 
-      <div className="space-y-3">
-        {!ready && <div className="skeleton h-24 w-full" />}
-        {assessments.map((a) => {
-          const st = STATUS[a.status];
-          return (
-            <Card key={a.id} className="overflow-hidden">
-              <div className="flex flex-wrap items-center gap-4 p-5">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-semibold">{a.title}</h3>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink2">
-                    <span className="tnum">{a.weight}% of module</span>
-                    <span className="flex items-center gap-1"><Clock size={13} /> Due {a.due}</span>
-                    {a.workName && <span className="flex items-center gap-1"><FileText size={13} /> {a.workName}</span>}
-                  </p>
+          {!ready && <div className="skeleton h-24 w-full" />}
+          {assessments.map((a) => {
+            const st = STATUS[a.status];
+            return (
+              <Card key={a.id} className="overflow-hidden">
+                <div className="flex flex-wrap items-center gap-4 p-5">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent"><FileText size={20} /></span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-semibold">{a.title}</h3>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink2">
+                      <span className="tnum">{a.weight}% of module</span>
+                      <span className="flex items-center gap-1"><Clock size={13} /> Due {a.due}</span>
+                      {a.workName && <span className="flex items-center gap-1"><FileText size={13} /> {a.workName}</span>}
+                    </p>
+                  </div>
+                  <span className={`rounded-md px-2 py-1 text-xs font-semibold ${st.cls}`}>{st.label}</span>
+                  {a.status === "not_started" && (
+                    <PrimaryButton onClick={() => setOpen(open === a.id ? null : a.id)}><Upload size={14} /> Upload work</PrimaryButton>
+                  )}
+                  {a.status === "viva_due" && (
+                    <Link href={`/submit/viva/${a.id}`} className="relative">
+                      <PrimaryButton><Mic size={14} /> Do your viva</PrimaryButton>
+                      <span className="absolute -right-1.5 -top-1.5"><NotifBadge count={1} /></span>
+                    </Link>
+                  )}
+                  {a.status === "awaiting_review" && <span className="flex items-center gap-1.5 text-sm text-ink2"><CheckCircle2 size={14} className="text-green" /> Viva done, waiting for a person to review</span>}
+                  {a.status === "reviewed" && <Link href="/rubric?tab=assess" className="text-sm font-medium text-accent underline-offset-2 hover:underline">See feedback</Link>}
                 </div>
-                <span className={`rounded px-2 py-1 text-xs font-semibold ${st.cls}`}>{st.label}</span>
-                {a.status === "not_started" && (
-                  <PrimaryButton onClick={() => setOpen(open === a.id ? null : a.id)}><Upload size={14} /> Upload work</PrimaryButton>
-                )}
-                {a.status === "viva_due" && (
-                  <Link href={`/submit/viva/${a.id}`} className="relative">
-                    <PrimaryButton><Mic size={14} /> Do your viva</PrimaryButton>
-                    <span className="absolute -right-1.5 -top-1.5"><NotifBadge count={1} /></span>
-                  </Link>
-                )}
-                {a.status === "awaiting_review" && <span className="flex items-center gap-1.5 text-sm text-ink2"><CheckCircle2 size={14} className="text-green" /> Viva done, waiting for a person to review</span>}
-                {a.status === "reviewed" && <Link href="/rubric?tab=assess" className="text-sm font-medium text-accent underline-offset-2 hover:underline">See feedback</Link>}
-              </div>
-              {open === a.id && a.status === "not_started" && <Uploader a={a} onDone={() => setOpen(null)} />}
-            </Card>
-          );
-        })}
+                {open === a.id && a.status === "not_started" && <Uploader a={a} onDone={() => setOpen(null)} />}
+              </Card>
+            );
+          })}
+        </div>
+
+        <aside className="min-w-0 space-y-4">
+          <Card className="p-6">
+            <h2 className="mb-4 font-serif text-lg font-semibold">How it works</h2>
+            <Steps
+              current={stage}
+              items={[
+                { title: "Upload your work", body: "Paste it or drop a file. Guardian removes any hidden instructions first." },
+                { title: "Get rubric feedback", body: "Each criterion gets a colour and a note quoting your own sentences. No mark." },
+                { title: "Talk it through", body: "A 5 minute spoken viva about what you wrote. Type if you prefer." },
+                { title: "A person decides", body: "Your module leader reads the evidence and makes the call." },
+              ]}
+            />
+          </Card>
+          <Note icon={<Info size={16} />} title="Not a detector">
+            The rubric is set by your module leader. The viva checks you understand your own work. It isn&apos;t a grade, and it never decides on its own.
+          </Note>
+          <Note icon={<Mic size={16} />} title="Prefer to type?">
+            Every viva has a Voice and Text switch. Captions are always on, and you can ask for any question in plain English.
+          </Note>
+        </aside>
       </div>
     </>
   );

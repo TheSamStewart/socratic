@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, ClipboardCheck, Download, Loader2, Mic, UserCheck } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Download, Lightbulb, Loader2, Mic, UserCheck } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
-import { Card, Confidence, Dot, GhostButton, PageTitle, Pill, PrimaryButton, STATUS_COLOR } from "@/components/ui";
+import { Card, Confidence, Dot, GhostButton, Note, PageTitle, Pill, PrimaryButton, ProgressLine, STATUS_COLOR } from "@/components/ui";
 import type { Assessment } from "@/lib/course";
 import { checkLab, errorText } from "@/lib/viva";
 import type { RubricCriterion } from "@/lib/types";
@@ -127,36 +127,91 @@ function AssessmentFeedback({ a }: { a: Assessment }) {
 }
 
 export default function Feedback() {
-  const { assessments, ready } = useApp();
+  const { assessments, labFeedback, labs, ready } = useApp();
   const params = useSearchParams();
   const [tab, setTab] = useState<"labs" | "assess">(params.get("tab") === "assess" ? "assess" : "labs");
   if (!ready) return <div className="skeleton h-64 w-full" />;
+
+  // Everything the student has had feedback on, for the summary column.
+  const items: { key: string; name: string; status: "green" | "amber" | "red"; from: string; href: string }[] = [
+    ...assessments.flatMap((a) => (a.session && a.status !== "not_started" ? a.session.rubric.map((r) => ({ key: `${a.id}-${r.id}`, name: r.criterion, status: r.status, from: a.title, href: a.kind === "final" ? "/teach?a=final" : "/teach" })) : [])),
+    ...labs.flatMap((l) => (labFeedback[l.id] ?? []).map((r) => ({ key: `${l.id}-${r.id}`, name: r.criterion, status: r.status, from: `Week ${l.week} lab`, href: `/teach?lab=${l.id}` }))),
+  ];
+  const n = (s: string) => items.filter((i) => i.status === s).length;
+  const focus = [...items.filter((i) => i.status === "red"), ...items.filter((i) => i.status === "amber")].slice(0, 5);
+
   return (
-    <div className="print-area mx-auto max-w-3xl">
-      <div className="flex items-start justify-between">
-        <PageTitle title="Feedback" sub="Where to focus next. A learning check, not a grade." />
-        <GhostButton className="no-print" onClick={() => window.print()}><Download size={14} /> Download PDF</GhostButton>
-      </div>
+    <div className="print-area">
+      <PageTitle
+        eyebrow="Assessment"
+        title="Feedback"
+        sub="Where to focus next. A learning check, not a grade: every note quotes your own words so you can see exactly what to strengthen."
+        actions={<GhostButton className="no-print" onClick={() => window.print()}><Download size={14} /> Download PDF</GhostButton>}
+      />
 
-      <div className="no-print mb-4 flex border-b border-line" role="tablist">
-        {([["labs", "Weekly lab feedback"], ["assess", "Assessments and viva"]] as const).map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm ${tab === k ? "border-accent font-semibold text-accent" : "border-transparent text-ink2 hover:text-ink"}`}>{label}</button>
-        ))}
-      </div>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
+          <div className="no-print mb-4 flex border-b border-line" role="tablist">
+            {([["labs", "Weekly lab feedback"], ["assess", "Assessments and viva"]] as const).map(([k, label]) => (
+              <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                className={`-mb-px border-b-2 px-4 py-2.5 text-sm ${tab === k ? "border-accent font-semibold text-accent" : "border-transparent text-ink2 hover:text-ink"}`}>{label}</button>
+            ))}
+          </div>
 
-      <div className="mb-4 flex gap-4 text-xs text-ink2">
-        {(["green", "amber", "red"] as const).map((s) => (
-          <span key={s} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[s] }} />{s === "green" ? "Met" : s === "amber" ? "Partly met" : "Missing"}</span>
-        ))}
-      </div>
+          <div className="mb-4 flex gap-4 text-xs text-ink2">
+            {(["green", "amber", "red"] as const).map((s) => (
+              <span key={s} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[s] }} />{s === "green" ? "Met" : s === "amber" ? "Partly met" : "Missing"}</span>
+            ))}
+          </div>
 
-      {tab === "labs" ? <LabFeedback /> : (
-        <div className="space-y-8">
-          {assessments.map((a) => <AssessmentFeedback key={a.id} a={a} />)}
-          {assessments.every((a) => a.status === "not_started") && <p className="flex items-center gap-2 text-ink2"><ClipboardCheck size={14} /> Rubric and viva feedback appear here after each submission.</p>}
+          {tab === "labs" ? <LabFeedback /> : (
+            <div className="space-y-8">
+              {assessments.map((a) => <AssessmentFeedback key={a.id} a={a} />)}
+              {assessments.every((a) => a.status === "not_started") && <p className="flex items-center gap-2 text-ink2"><ClipboardCheck size={14} /> Rubric and viva feedback appear here after each submission.</p>}
+            </div>
+          )}
         </div>
-      )}
+
+        <aside className="no-print min-w-0 space-y-4">
+          <Card className="p-6">
+            <h2 className="mb-4 font-serif text-lg font-semibold">At a glance</h2>
+            {items.length === 0 ? (
+              <p className="text-sm text-ink2">Nothing yet. Check some lab notes or submit work and your feedback collects here.</p>
+            ) : (
+              <>
+                <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+                  {([["green", "Met"], ["amber", "Partly"], ["red", "Missing"]] as const).map(([s, l]) => (
+                    <div key={s} className="rounded-lg bg-subtle px-2 py-3">
+                      <p className="tnum font-serif text-2xl font-semibold">{n(s)}</p>
+                      <p className="flex items-center justify-center gap-1.5 text-xs text-ink2"><Dot status={s} size={6} />{l}</p>
+                    </div>
+                  ))}
+                </div>
+                <ProgressLine value={n("green")} total={items.length} label="Criteria met" />
+              </>
+            )}
+          </Card>
+          {focus.length > 0 && (
+            <Card className="p-6">
+              <h2 className="mb-3 font-serif text-lg font-semibold">Focus next</h2>
+              <ul className="space-y-1">
+                {focus.map((f) => (
+                  <li key={f.key}>
+                    <Link href={f.href} className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-subtle">
+                      <Dot status={f.status} />
+                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{f.name}</span><span className="text-xs text-ink3">{f.from}</span></span>
+                      <span className="text-xs font-medium text-accent">Practise</span><ArrowRight size={13} className="text-accent" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          <Note icon={<Lightbulb size={16} />} title="Reading your feedback">
+            Amber means you mention the idea but not why it matters. Red means it isn&apos;t there yet. Explaining it to Max is the quickest way to turn it green.
+          </Note>
+        </aside>
+      </div>
     </div>
   );
 }

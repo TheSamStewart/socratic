@@ -46,7 +46,7 @@ export default function VivaPage() {
   return (
     <>
       <Link href="/submit" className="mb-3 inline-flex items-center gap-1 text-sm text-ink2 hover:text-ink"><ArrowLeft size={14} /> Submit work</Link>
-      <PageTitle title={`Viva: ${a.title}`} sub="A short spoken conversation about your own work. The timer is a guide, it never cuts you off." />
+      <PageTitle eyebrow="Viva" title={a.title} sub="A short spoken conversation about your own work. Press start, listen, then answer out loud. The timer is a guide and never cuts you off." />
       <ChatPanel kind="viva" session={a.session} onSession={onSession} railTitle="Topics covered" />
     </>
   );

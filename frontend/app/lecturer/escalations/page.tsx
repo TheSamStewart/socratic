@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Inbox, Megaphone, Users } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
-import { Card, Empty, PageTitle, PrimaryButton, Skeleton } from "@/components/ui";
+import { Card, Empty, Note, PageTitle, PrimaryButton, Skeleton } from "@/components/ui";
 import { answerCluster, errorText } from "@/lib/viva";
 
 export default function Escalations() {
@@ -26,12 +26,13 @@ export default function Escalations() {
 
   return (
     <>
-      <PageTitle title="Student questions" sub="Questions the brief couldn't answer, grouped by what students actually mean. Answer once and everyone is told." />
-      {queueError && <div className="mb-4 flex items-center gap-3 rounded border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3 text-sm" role="alert"><span className="flex-1 text-[#b42318]">Couldn't reach Viva. Try again.</span><button onClick={refreshQueue} className="rounded border border-line bg-white px-3 py-1.5 font-medium hover:bg-muted">Retry</button></div>}
+      <PageTitle eyebrow="Module leader" title="Student questions" sub="Questions the brief couldn't answer, grouped by what students actually mean. Answer once and everyone is told." />
+      {queueError && <div className="mb-4 flex items-center gap-3 rounded border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3 text-sm" role="alert"><span className="flex-1 text-[#b42318]">Couldn't reach Socratic. Try again.</span><button onClick={refreshQueue} className="rounded border border-line bg-white px-3 py-1.5 font-medium hover:bg-muted">Retry</button></div>}
       {sendErr && <p className="mb-3 text-sm text-[#b42318]" role="alert">{sendErr}</p>}
       {!loaded && !queueError && <Skeleton className="h-40 w-full" />}
       {loaded && !queueError && sorted.length === 0 && <Empty icon={<Inbox size={18} />} title="Nothing to answer" body="When students ask something the brief doesn't cover, it appears here." />}
-      <div className="space-y-3">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="min-w-0 space-y-3">
         {sorted.map((c) => (
           <Card key={c.id} className="fadein overflow-hidden p-5">
             <div className="mb-3 flex items-start gap-3">
@@ -66,6 +67,30 @@ export default function Escalations() {
             )}
           </Card>
         ))}
+      </div>
+      <aside className="min-w-0 space-y-4">
+        <Card className="p-6">
+          <h2 className="mb-4 font-serif text-lg font-semibold">This week</h2>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[
+              ["Open", sorted.filter((c) => c.status === "open").length],
+              ["Answered", sorted.filter((c) => c.status === "answered").length],
+              ["Students", new Set(sorted.flatMap((c) => c.students)).size],
+            ].map(([l, v]) => (
+              <div key={l} className="rounded-lg bg-subtle px-2 py-3">
+                <p className="tnum font-serif text-2xl font-semibold">{v}</p>
+                <p className="text-xs text-ink2">{l}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Note icon={<Megaphone size={16} />} title="Answer once, reach everyone">
+          Questions are grouped by meaning, not wording. Your reply appears as a banner on the brief for every student in the group. Students stay anonymous.
+        </Note>
+        <Note icon={<Inbox size={16} />} title="Why these are here">
+          The brief assistant only answers when it can quote the brief. Anything it can&apos;t support comes to you instead of being guessed.
+        </Note>
+      </aside>
       </div>
     </>
   );

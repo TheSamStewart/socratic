@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, CheckCircle2, RotateCcw, Send, Users } from "lucide-react";
+import { Bell, CheckCircle2, Lightbulb, RotateCcw, Send, Users } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { Card, Confidence, GhostButton, PageTitle, PrimaryButton, Skeleton } from "@/components/ui";
 import { askBrief, errorText, getBriefText, getBroadcasts } from "@/lib/viva";
@@ -52,7 +52,7 @@ export default function Brief() {
 
   return (
     <>
-      <PageTitle title="Assignment brief" sub="Ask anonymously. Answers come only from the brief. If it's unclear, your module leader is asked." />
+      <PageTitle eyebrow="Assessment" title="Assignment brief" sub="Read the brief, then ask anything about it. Answers come only from the brief and quote it. If the brief doesn&apos;t say, your module leader is asked, anonymously." />
 
       {broadcasts.map((c) => (
         <div key={c.id} className="fadein mb-4 flex gap-3 rounded-md border border-line bg-[#f6fbf8] p-4" role="status">
@@ -64,8 +64,8 @@ export default function Brief() {
         </div>
       ))}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
-        <Card className="p-6">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <Card className="bg-reading p-8 lg:p-10">
           {!brief && !briefErr && <div className="space-y-3"><Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><Skeleton className="h-4 w-full" /></div>}
           {briefErr && (
             <div className="flex items-center gap-3">
@@ -75,8 +75,8 @@ export default function Brief() {
           )}
           {brief && (
             <>
-              <h2 className="mb-4 text-base font-semibold">{brief[0]}</h2>
-              <div className="space-y-3 leading-relaxed">
+              <h2 className="mb-6 border-b border-line pb-4 font-serif text-2xl font-semibold">{brief[0]}</h2>
+              <div className="max-w-[72ch] space-y-4 text-[16px] leading-[1.75]">
                 {brief.slice(1).map((line) => {
                   const hit = highlight && line.includes(highlight.slice(0, 30));
                   return <p key={line} className={hit ? "fadein -mx-2 rounded bg-[#fff6e0] px-2 py-1 ring-1 ring-[#e8a33d66]" : ""}>{line}</p>;
@@ -86,7 +86,7 @@ export default function Brief() {
           )}
         </Card>
 
-        <div className="space-y-3">
+        <div className="space-y-3 xl:sticky xl:top-0">
           <Card className="p-4">
             <label htmlFor="ask" className="text-sm font-medium">Ask about the brief</label>
             <p className="mb-2 text-xs text-ink2">Anonymous. Your module leader never sees your name.</p>
@@ -104,6 +104,18 @@ export default function Brief() {
               <PrimaryButton onClick={ask} disabled={busy || !q.trim()}><Send size={14} /> {busy ? "Checking the brief…" : askErr ? "Retry" : "Ask"}</PrimaryButton>
             </div>
           </Card>
+
+          {log.length === 0 && (
+            <Card className="p-5">
+              <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Lightbulb size={15} className="text-accent" /> Questions students often ask</p>
+              <div className="flex flex-wrap gap-2">
+                {["When is it due?", "How many sources do I need?", "Does the word count include references?", "Can I use AI tools?"].map((s) => (
+                  <button key={s} type="button" onClick={() => setQ(s)} className="rounded-full border border-accent-line bg-accent-soft px-3 py-1.5 text-[13px] text-accent-ink transition-colors hover:bg-[#e2eaff]">{s}</button>
+                ))}
+              </div>
+              <p className="mt-4 border-t border-line pt-3 text-xs leading-relaxed text-ink3">If the brief doesn&apos;t answer it, your question joins others like it and your module leader replies once, to everyone.</p>
+            </Card>
+          )}
 
           {log.map((e, i) => (
             <Card key={i} className="fadein space-y-2 p-4">

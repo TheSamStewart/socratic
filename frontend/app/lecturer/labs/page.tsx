@@ -33,7 +33,7 @@ export default function LecturerLabs() {
 
   return (
     <>
-      <PageTitle title="Weekly labs" sub="Upload each week's lab work. Students get it in Teach Max, and their mastery map and your class insights are built from it." />
+      <PageTitle eyebrow="Module leader" title="Weekly labs" sub="Upload each week's lab work. Students get it in Teach Max, and their mastery map and your class insights are built from it." />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Card className="p-5">
           <h3 className="mb-3 text-sm font-semibold">Upload a lab</h3>

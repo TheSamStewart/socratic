@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { getQueue } from "@/lib/viva";
 import {
   SEED_ASSESSMENTS, SEED_LABS, SEED_MASTERY, registerLabs,
@@ -45,10 +45,15 @@ type Ctx = Store & {
 };
 
 const AppCtx = createContext<Ctx | null>(null);
+const noop = () => () => {};
+
 export const useApp = () => {
   const c = useContext(AppCtx);
   if (!c) throw new Error("useApp outside AppProvider");
-  return c;
+  // false on the server and during hydration, true after. Pages inside a Suspense boundary can hydrate
+  // after the provider is already ready, so gate on both or the first client render mismatches the HTML.
+  const hydrated = useSyncExternalStore(noop, () => true, () => false);
+  return hydrated ? c : { ...c, ready: false };
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {

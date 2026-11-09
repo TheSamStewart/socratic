@@ -25,7 +25,7 @@ export default function Agents() {
   // Polled every 2s so call counts and the log update after a submission.
   useEffect(() => { load(); const t = setInterval(load, 2000); return () => clearInterval(t); }, [load]);
 
-  const header = <PageTitle title="AI agents & audit log" sub="Every AI decision is logged. A person makes the final call." />;
+  const header = <PageTitle eyebrow="Module leader" title="AI agents & audit log" sub="Every AI decision is logged. A person makes the final call." />;
 
   if (!data && error)
     return (

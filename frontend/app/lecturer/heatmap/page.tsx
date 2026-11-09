@@ -22,7 +22,7 @@ export default function Heatmap() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const header = <PageTitle title="Class insights" sub="How the whole class is doing on each concept. Demo data for 20 students, labelled." />;
+  const header = <PageTitle eyebrow="Module leader" title="Class insights" sub="How the whole class is doing on each concept. Demo data for 20 students, labelled." />;
 
   if (error && !rows)
     return (

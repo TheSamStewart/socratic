@@ -63,8 +63,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     <div className="viva-frame flex">
       <aside className="viva-sidebar no-print flex min-h-0 shrink-0 flex-col border-r border-line bg-subtle" aria-label="Module menu">
         <div className="flex h-[68px] shrink-0 items-center gap-2 px-4">
-          <Logo sub="Learn by being asked" />
-          <span className="ml-auto rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink2">CMP2045</span>
+          <Logo sub="Learn by questioning" />
         </div>
         <div className="mx-3 mb-5 flex rounded-lg border border-line bg-muted p-0.5 text-xs" role="tablist" aria-label="View as">
           {(["student", "lecturer"] as const).map((r) => (

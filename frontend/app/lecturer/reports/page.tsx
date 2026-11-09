@@ -32,7 +32,7 @@ export default function Reports() {
   if (!sessions && error)
     return (
       <>
-        <PageTitle title="Viva reports" sub="Evidence, not verdicts. You make the final call." />
+        <PageTitle eyebrow="Module leader" title="Viva reports" sub="Evidence, not verdicts. You make the final call." />
         <Card className="flex items-center gap-3 p-5">
           <span className="flex-1 text-[#b42318]" role="alert">{error}</span>
           <GhostButton onClick={load}><RotateCcw size={14} /> Retry</GhostButton>
@@ -57,7 +57,7 @@ export default function Reports() {
 
   return (
     <>
-      <PageTitle title="Viva reports" sub="Evidence, not verdicts. You make the final call." />
+      <PageTitle eyebrow="Module leader" title="Viva reports" sub="Evidence, not verdicts. You make the final call." />
       {error && <p className="mb-3 text-sm text-[#b42318]" role="alert">{error} Showing the last results.</p>}
       {pending > 0 && <p className="mb-3 text-sm text-ink2">{pending} waiting for your decision</p>}
 
