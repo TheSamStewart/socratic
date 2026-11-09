@@ -4,7 +4,31 @@
 
 Socratic checks whether students can explain the ideas in their own coursework through rubric feedback, practice and a short viva. Lecturers see quoted evidence and areas to discuss, then make the final academic decision.
 
-Built at [GreatUniHack 2026](https://greatunihack-2026.devpost.com), University of Manchester, on 7 November 2026 for Reply's **AI on Campus** challenge.
+> **About this repository.** This is Sam Stewart's continuation of Socratic, the team project built at GreatUniHack 2026 (original team repo: [HamidZ11/least-privilege-guh](https://github.com/HamidZ11/least-privilege-guh); team credited below; commit history preserved). It adds a redesign based on `design/refs/designresearch.md`, a working voice conversation (ElevenLabs with a browser-voice fallback, hands-free turns) and a plan for a talking-tutor avatar in `design/refs/talking-tutor-plan.md`.
+
+### Quick start on Windows (PowerShell)
+
+```powershell
+copy .env.example .env          # then add ANTHROPIC_API_KEY (and optionally ELEVENLABS_API_KEY)
+cd backend
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:SEED_DEMO="1"; uvicorn app.main:app --port 8000
+```
+
+In a second terminal:
+
+```powershell
+cd frontend
+copy .env.local.example .env.local
+npm install
+npm run dev                     # open http://localhost:3000
+```
+
+No keys? Set `NEXT_PUBLIC_DEMO_OFFLINE=1` in `frontend/.env.local` and the frontend runs on its built-in demo data without the backend. Voice still works using the browser's own voice.
+
+Originally built by the team below at [GreatUniHack 2026](https://greatunihack-2026.devpost.com), University of Manchester, on 7 November 2026 for Reply's **AI on Campus** challenge.
 
 ## The problem
 
