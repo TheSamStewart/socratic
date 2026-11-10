@@ -8,6 +8,7 @@ the words, so a badly worded reply can't change the flow.
 import logging
 import re
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.agents.base import (
@@ -90,31 +91,39 @@ class Rephrased(Shape):
     message: NonBlank
 
 
-class QuestionWriter(Agent):
+class SpokenLine(Agent):
+    """One short spoken line per turn: low effort keeps the conversation snappy."""
+
+    effort = "low"
+
+
+class QuestionWriter(SpokenLine):
     name = "examiner_question"
     system_prompt = QUESTION_PROMPT
     output_model = Question
 
 
-class MaxOpener(Agent):
+class MaxOpener(SpokenLine):
     name = "max_open"
     system_prompt = MAX_OPEN_PROMPT
     output_model = MaxLine
 
 
 class MaxPushback(Agent):
+    # Default effort: low effort often broke the no-questions rule. It runs alongside
+    # the Marker (see _parallel), so the extra thinking adds no wait.
     name = "max_pushback"
     system_prompt = MAX_PUSHBACK_PROMPT
     output_model = MaxLine
 
 
-class MaxCorrected(Agent):
+class MaxCorrected(SpokenLine):
     name = "max_corrected"
     system_prompt = MAX_CORRECTED_PROMPT
     output_model = MaxLine
 
 
-class Rephraser(Agent):
+class Rephraser(SpokenLine):
     name = "rephrase"
     system_prompt = REPHRASE_PROMPT
     output_model = Rephrased
@@ -200,14 +209,29 @@ def _examiner_style(output: dict) -> None:
         raise AgentOutputError("examiner question broke the style rules")
 
 
-def _ask(session: dict[str, Any], concept: dict[str, Any], last_answer: str | None) -> dict[str, Any]:
+def _parallel(**jobs: Callable[[], Any] | None) -> dict[str, Any]:
+    """Run independent Claude calls at the same time and return their results.
+
+    Speed trick for spoken turns: while the Marker grades an answer, every line
+    the examiner or Max might say next is written alongside it. Code still makes
+    the decision from the mark and simply uses the matching line, so the flow is
+    unchanged; the unused lines are thrown away. If any job raises (for example
+    the Marker fails), the error propagates and the student can resend.
+    """
+    live = {name: job for name, job in jobs.items() if job is not None}
+    with ThreadPoolExecutor(max_workers=max(len(live), 1)) as pool:
+        futures = {name: pool.submit(job) for name, job in live.items()}
+        return {name: future.result() for name, future in futures.items()}
+
+
+def _write_question(concept: dict[str, Any], last_answer: str | None, history: list[dict[str, Any]]) -> str:
     follow_up = last_answer is not None
     fallback = (
         "Can you say more about that, using your own example?"
         if follow_up
         else f'You wrote "{concept["quote"]}". Walk me through why.'
     )
-    question = _write(
+    return _write(
         QuestionWriter(),
         "question",
         fallback,
@@ -215,8 +239,18 @@ def _ask(session: dict[str, Any], concept: dict[str, Any], last_answer: str | No
         concept=concept,
         follow_up=follow_up,
         last_answer=last_answer,
-        history=session["viva_transcript"],
+        history=history,
     )
+
+
+def _ask(
+    session: dict[str, Any],
+    concept: dict[str, Any],
+    last_answer: str | None,
+    question: str | None = None,
+) -> dict[str, Any]:
+    if question is None:
+        question = _write_question(concept, last_answer, session["viva_transcript"])
     session["current_concept_id"] = concept["id"]
     session["viva_concept_id"] = concept["id"]  # Max can change current_concept_id
     session["viva_awaiting_answer"] = True
@@ -244,25 +278,39 @@ def _recap(session: dict[str, Any]) -> dict[str, Any]:
     return session
 
 
-def _next_question(session: dict[str, Any]) -> dict[str, Any]:
-    tested = session.setdefault("viva_tested", [])
+def _pick_next(session: dict[str, Any]) -> dict[str, Any] | None:
+    """The concept the viva asks about next, without changing the session.
+    Untested concepts keep their status until asked, so marking the current
+    answer never changes this choice."""
+    tested = session.get("viva_tested", [])
     remaining = [c for c in session["concepts"] if c["id"] not in tested]
-    if not remaining:
+    return min(remaining, key=lambda c: STATUS_RANK[c["status"]], default=None)
+
+
+def _next_question(session: dict[str, Any], question: str | None = None) -> dict[str, Any]:
+    concept = _pick_next(session)
+    if concept is None:
         return _recap(session)
-    concept = min(remaining, key=lambda c: STATUS_RANK[c["status"]])
-    tested.append(concept["id"])
+    session.setdefault("viva_tested", []).append(concept["id"])
     session["viva_followed_up"] = False
-    return _ask(session, concept, None)
+    return _ask(session, concept, None, question)
 
 
-def _hand_over_to_max(session: dict[str, Any], concept: dict[str, Any], answer: str) -> dict[str, Any]:
+def _hand_over_to_max(
+    session: dict[str, Any], concept: dict[str, Any], answer: str, line: str | None = None
+) -> dict[str, Any]:
     """Open Max on this concept, picking up the student's own answer. The viva
     pauses here; the examiner asks the next question once Max is convinced."""
     session["return_to_viva"] = True
     session.setdefault("max_taught", []).append(concept["id"])
     session["viva_awaiting_answer"] = False
     session["mode"] = "teach_max"
-    return _open_max(session, concept, _max_line(concept, answer))
+    return _open_max(session, concept, line if line is not None else _max_line(concept, answer))
+
+
+def _with_turn(transcript: list[dict[str, Any]], text: str, concept_id: str) -> list[dict[str, Any]]:
+    """The transcript as it will look once the student's turn is stored."""
+    return [*transcript, {"role": "student", "text": text, "concept_id": concept_id}]
 
 
 def viva_turn(session: dict[str, Any], text: str | None) -> dict[str, Any]:
@@ -283,18 +331,31 @@ def viva_turn(session: dict[str, Any], text: str | None) -> dict[str, Any]:
     transcript = session["viva_transcript"]
     question = transcript[-1]["text"]
     answer, flags = _scan_student_text(text)
-    result = score(concept, question, answer, session["work_text"])
+
+    # Write each possible next line while the Marker grades (see _parallel).
+    last_turn = sum(turn["role"] == "student" for turn in transcript) + 1 >= MAX_VIVA_TURNS
+    followed_up = session.get("viva_followed_up", False)
+    history = _with_turn(transcript, answer, concept["id"])
+    upcoming = None if last_turn else _pick_next(session)
+    can_hand_over = followed_up and concept["id"] not in session.get("max_taught", [])
+    lines = _parallel(
+        mark=lambda: score(concept, question, answer, session["work_text"]),
+        follow_up=None if last_turn or followed_up else lambda: _write_question(concept, answer, history),
+        next=None if upcoming is None else lambda: _write_question(upcoming, None, history),
+        max=None if last_turn or not can_hand_over else lambda: _max_line(concept, answer),
+    )
+    result = lines["mark"]
     index = _store_student_turn(session, "viva_transcript", answer, flags, concept["id"])
     _apply_mark(session, concept, result, index)
 
-    if sum(turn["role"] == "student" for turn in transcript) >= MAX_VIVA_TURNS:
+    if last_turn:
         return _recap(session)
-    if result["status"] != "green" and not session.get("viva_followed_up"):
+    if result["status"] != "green" and not followed_up:
         session["viva_followed_up"] = True
-        return _ask(session, concept, answer)
+        return _ask(session, concept, answer, lines.get("follow_up"))
     if result["status"] == "red" and concept["id"] not in session.get("max_taught", []):
-        return _hand_over_to_max(session, concept, answer)
-    return _next_question(session)
+        return _hand_over_to_max(session, concept, answer, lines.get("max"))
+    return _next_question(session, lines.get("next"))
 
 
 # Max
@@ -320,16 +381,16 @@ def _open_max(session: dict[str, Any], concept: dict[str, Any], line: str) -> di
     return session
 
 
-def _max_open(session: dict[str, Any], concept: dict[str, Any]) -> dict[str, Any]:
-    return _open_max(session, concept, _max_line(concept))
+def _max_open(session: dict[str, Any], concept: dict[str, Any], line: str | None = None) -> dict[str, Any]:
+    return _open_max(session, concept, line if line is not None else _max_line(concept))
 
 
 def _mode_after_max(session: dict[str, Any]) -> str:
     return "recap" if session.get("viva_over") else "viva"
 
 
-def _weak_concept(session: dict[str, Any]) -> dict[str, Any] | None:
-    weak = [c for c in session["concepts"] if c["status"] in ("red", "amber")]
+def _weak_concept(session: dict[str, Any], skip: str | None = None) -> dict[str, Any] | None:
+    weak = [c for c in session["concepts"] if c["status"] in ("red", "amber") and c["id"] != skip]
     return min(weak, key=lambda c: STATUS_RANK[c["status"]], default=None)
 
 
@@ -353,47 +414,65 @@ def max_turn(session: dict[str, Any], text: str | None) -> dict[str, Any]:
     transcript = session["max_transcript"]
     question = transcript[-1]["text"]
     reply, flags = _scan_student_text(text)
-    result = score(concept, question, reply, session["work_text"])
+
+    # Write Max's pushback, his "you've convinced me" and whatever comes after it
+    # while the Marker grades (see _parallel). Once convinced, the current concept
+    # turns green, so what follows never depends on it.
+    history = _with_turn(transcript, reply, concept["id"])
+    returning = session.get("return_to_viva", False)
+    upcoming = None
+    if returning and not session.get("viva_over"):
+        upcoming = _pick_next(session)
+    elif not returning:
+        upcoming = _weak_concept(session, skip=concept["id"])
+    viva_history = session["viva_transcript"]
+    lines = _parallel(
+        mark=lambda: score(concept, question, reply, session["work_text"]),
+        pushback=lambda: _write(
+            MaxPushback(),
+            "max_says",
+            "Nah, I'm not buying that. I'm sticking with what I said.",
+            _statements_only,
+            concept=concept,
+            history=history,
+            student_reply=reply,
+        ),
+        corrected=lambda: _write(
+            MaxCorrected(),
+            "max_says",
+            "Oh, that makes sense now. Thanks for explaining it!",
+            concept=concept,
+            history=history,
+            student_reply=reply,
+        ),
+        next=None if upcoming is None else (
+            (lambda: _write_question(upcoming, None, viva_history)) if returning else (lambda: _max_line(upcoming))
+        ),
+    )
+    result = lines["mark"]
     index = _store_student_turn(session, "max_transcript", reply, flags, concept["id"])
 
     if result["status"] != "green":
         _record_flag(session, result, index)
         if result["status"] == "amber":
             concept["status"] = "amber"
-        line = _write(
-            MaxPushback(),
-            "max_says",
-            "Nah, I'm not buying that. I'm sticking with what I said.",
-            _statements_only,
-            concept=concept,
-            history=transcript,
-            student_reply=reply,
-        )
-        _say(session, "max_transcript", "max", line, concept["id"])
+        _say(session, "max_transcript", "max", lines["pushback"], concept["id"])
         return session
 
     _apply_mark(session, concept, result, index)
-    line = _write(
-        MaxCorrected(),
-        "max_says",
-        "Oh, that makes sense now. Thanks for explaining it!",
-        concept=concept,
-        history=transcript,
-        student_reply=reply,
-    )
-    _say(session, "max_transcript", "max", line, concept["id"])
+    _say(session, "max_transcript", "max", lines["corrected"], concept["id"])
     session["max_concept_id"] = None
 
-    if session.get("return_to_viva"):
+    if returning:
         session["return_to_viva"] = False
         if session.get("viva_over"):
             session["mode"] = "recap"
             return session
         session["mode"] = "viva"
-        return _next_question(session)
+        return _next_question(session, lines.get("next"))
     next_concept = _weak_concept(session)
     if next_concept is not None:
-        return _max_open(session, next_concept)
+        return _max_open(session, next_concept, lines.get("next") if next_concept is upcoming else None)
     session["mode"] = _mode_after_max(session)
     return session
 

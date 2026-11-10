@@ -1,25 +1,26 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { CheckCircle2, FlaskConical, Upload } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
+import FileDrop, { isText } from "@/components/FileDrop";
 import { Card, GhostButton, PageTitle, PrimaryButton } from "@/components/ui";
 
 export default function LecturerLabs() {
   const { labs, uploadLab } = useApp();
-  const input = useRef<HTMLInputElement>(null);
   const nextWeek = Math.max(0, ...labs.map((l) => l.week)) + 1;
   const [week, setWeek] = useState(nextWeek);
   const [title, setTitle] = useState("");
   const [topics, setTopics] = useState("");
-  const [notes, setNotes] = useState("");
-  const [file, setFile] = useState<string | undefined>();
+  const [file, setFile] = useState<File | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  const publish = () => {
+  const publish = async () => {
+    // Short summary from the lab sheet when it is plain text; PDF/Word keep the file name only.
+    const notes = file && isText(file) ? (await file.text()).replace(/\s+/g, " ") : "";
     const names = topics.split(",").map((t) => t.trim()).filter(Boolean);
     uploadLab({
-      week, title: title.trim(), fileName: file,
+      week, title: title.trim(), fileName: file?.name,
       summary: notes.trim().slice(0, 140) || `Week ${week} lab`,
       concepts: names.map((n, i) => ({
         id: `w${week}-${Date.now()}-${i}`, name: n,
@@ -28,12 +29,12 @@ export default function LecturerLabs() {
       })),
     });
     setDone(`Week ${week}: ${title.trim()}`);
-    setTitle(""); setTopics(""); setNotes(""); setFile(undefined); setWeek(week + 1);
+    setTitle(""); setTopics(""); setFile(null); setWeek(week + 1);
   };
 
   return (
     <>
-      <PageTitle eyebrow="Module leader" title="Weekly labs" sub="Upload each week's lab work. Students get it in Teach Max, and their mastery map and your class insights are built from it." />
+      <PageTitle eyebrow="Module leader" title="Weekly labs" sub="Upload each week's lab sheet. Students get it in Teach Max, and their mastery map and your class insights are built from it." />
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Card className="p-5">
           <h3 className="mb-3 text-sm font-semibold">Upload a lab</h3>
@@ -48,15 +49,11 @@ export default function LecturerLabs() {
           <label className="mt-3 block text-xs font-medium text-ink2">Key topics (comma separated)
             <input value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="p-values, effect size" className="mt-1 w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-ink3" />
           </label>
-          <div className="mt-3 flex items-center justify-between">
-            <label htmlFor="labnotes" className="text-xs font-medium text-ink2">Lab sheet or notes</label>
-            <button type="button" onClick={() => input.current?.click()} className="text-xs text-ink2 underline-offset-2 hover:underline">Upload .txt file</button>
-            <input ref={input} type="file" accept=".txt,.md" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setFile(f.name); setNotes(await f.text()); } }} />
+          <div className="mt-4">
+            <FileDrop id="labsheet" label="Lab sheet" file={file} onFile={setFile} accept={[".pdf", ".docx", ".txt", ".md"]} hint=".pdf, .docx, .txt, .md · max 5 MB" />
           </div>
-          <textarea id="labnotes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={6} placeholder="Paste the lab sheet or your notes…" className="mt-1 w-full resize-none rounded border border-line px-3 py-2 outline-none focus:border-ink3" />
-          {file && <p className="mt-1 text-xs text-ink2">Loaded {file}</p>}
           <div className="mt-3 flex items-center justify-between">
-            <GhostButton type="button" onClick={() => { setWeek(nextWeek); setTitle("Statistical significance"); setTopics("p-values, effect size"); setNotes("This week we look at what a p-value does and does not tell us, and why effect size matters alongside it."); }}>Fill demo lab</GhostButton>
+            <GhostButton type="button" onClick={() => { setWeek(nextWeek); setTitle("Statistical significance"); setTopics("p-values, effect size"); setFile(new File(["This week we look at what a p-value does and does not tell us, and why effect size matters alongside it."], "week-lab-sheet.txt", { type: "text/plain" })); }}>Fill demo lab</GhostButton>
             <PrimaryButton onClick={publish} disabled={!title.trim() || !topics.trim()}><Upload size={14} /> Publish to students</PrimaryButton>
           </div>
           {done && <p className="fadein mt-3 flex items-center gap-2 rounded bg-[#e6f4ec] px-3 py-2 text-sm" role="status"><CheckCircle2 size={14} className="text-green" /> {done} published. Students have been notified. <span className="text-ink2">Saved for this demo (stored in this browser only).</span></p>}

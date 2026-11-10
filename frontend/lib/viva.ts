@@ -32,6 +32,22 @@ async function call<T>(path: string, init: RequestInit | undefined, fallback: ()
     clearTimeout(t);
   }
 }
+/**
+ * Does the backend still hold this session? Sessions live in server memory, so a
+ * backend restart forgets them while the browser still has its copy.
+ * true = alive, false = gone (404), null = can't tell (offline / network error).
+ */
+export async function sessionExists(id: string): Promise<boolean | null> {
+  if (OFFLINE) return null;
+  try {
+    const res = await fetch(`${API}/api/session/${encodeURIComponent(id)}`);
+    if (res.status === 404) return false;
+    return res.ok ? true : null;
+  } catch {
+    return null;
+  }
+}
+
 export const errorText = (e: unknown) => (e instanceof Error && e.message ? e.message : FRIENDLY_ERROR);
 
 const json = (body: unknown): RequestInit => ({
@@ -68,10 +84,12 @@ export async function submitWork(student: string, work: string | File, rubric: s
 }
 
 /** Weekly lab feedback: real Checker if the backend is up, otherwise a simple local check. */
-export async function checkLab(student: string, notes: string, lab: Lab): Promise<{ rubric: RubricCriterion[]; live: boolean }> {
+export async function checkLab(student: string, work: string | File, lab: Lab): Promise<{ rubric: RubricCriterion[]; live: boolean }> {
   const objectives = lab.concepts.map((c) => `${c.name} (${Math.round(100 / lab.concepts.length)}%): ${c.claim}`).join("\n");
-  const r = await submitWork(student, notes, objectives);
+  const r = await submitWork(student, work, objectives);
   if (r.live) return { rubric: r.data.rubric, live: true };
+  // Offline: read plain-text uploads locally; binary formats (PDF, Word) need the backend.
+  const notes = typeof work === "string" ? work : /\.(txt|md|py|js|ts|java|ipynb)$/i.test(work.name) ? await work.text() : "";
   const sentences = notes.split(/(?<=[.!?])\s+/);
   const rubric = lab.concepts.map((c, i): RubricCriterion => {
     const re = new RegExp(c.kw ?? "$^", "i");

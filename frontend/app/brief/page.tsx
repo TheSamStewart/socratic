@@ -75,7 +75,7 @@ export default function Brief() {
           )}
           {brief && (
             <>
-              <h2 className="mb-6 border-b border-line pb-4 font-serif text-2xl font-semibold">{brief[0]}</h2>
+              <h2 className="mb-6 border-b border-line pb-4 text-2xl font-semibold">{brief[0]}</h2>
               <div className="max-w-[72ch] space-y-4 text-[16px] leading-[1.75]">
                 {brief.slice(1).map((line) => {
                   const hit = highlight && line.includes(highlight.slice(0, 30));

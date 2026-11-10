@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -236,6 +237,70 @@ def tts(body: TtsRequest) -> Response:
     except Exception as error:
         logger.warning("TTS failed: %s", type(error).__name__)
         raise HTTPException(503, "Voice is unavailable, showing text only") from None
+
+
+SIMLI_TOKEN_URL = "https://api.simli.ai/compose/token"
+SIMLI_DEFAULT_FACE = "bf13113a-355a-4d97-8b90-4edccd1da7b2"  # preset "Anna"
+
+
+@api.post("/simli/token")
+def simli_token() -> dict[str, str]:
+    """Short-lived Simli session token for the examiner's face. The API key never leaves the server."""
+    key = os.getenv("SIMLI_API_KEY", "").strip()
+    if not key:
+        raise HTTPException(503, "Video examiner is not configured")
+    try:
+        r = httpx.post(
+            SIMLI_TOKEN_URL,
+            headers={"x-simli-api-key": key},
+            json={
+                "faceId": os.getenv("SIMLI_FACE_ID", "").strip() or SIMLI_DEFAULT_FACE,
+                "apiVersion": "v2",
+                "handleSilence": True,    # face keeps idling naturally between lines
+                "maxSessionLength": 600,  # hard cap per call: protects free minutes
+                "maxIdleTime": 120,       # forgotten tabs stop spending after 2 min
+            },
+            timeout=10,
+        )
+        data = r.json()
+    except (httpx.HTTPError, ValueError) as error:
+        logger.warning("Simli token failed: %s", type(error).__name__)
+        raise HTTPException(503, "Video examiner is unavailable") from None
+    token = data.get("session_token") if isinstance(data, dict) else None
+    if r.status_code != 200 or not token or token == "FAIL TOKEN":
+        logger.warning("Simli token rejected: HTTP %s", r.status_code)
+        raise HTTPException(503, "Video examiner is unavailable")
+    return {"session_token": token}
+
+
+CAPTURE_MAX_BYTES = 300_000_000
+CAPTURE_TYPES = {"image/png": ".png", "video/webm": ".webm"}
+
+
+@api.post("/capture")
+def save_capture(file: UploadFile = File(...)) -> dict[str, str]:
+    """Demo helper: save a screenshot or call recording from the viva (?capture=1).
+
+    Off unless CAPTURE_DIR is set. The file name is generated here, never taken
+    from the request, so nothing can be written outside CAPTURE_DIR.
+    """
+    folder = os.getenv("CAPTURE_DIR", "").strip()
+    if not folder:
+        raise HTTPException(404, "Not found")
+    content_type = (file.content_type or "").split(";")[0].strip()
+    ext = CAPTURE_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(415, "Only PNG screenshots and WebM recordings are accepted")
+    data = file.file.read(CAPTURE_MAX_BYTES + 1)
+    if len(data) > CAPTURE_MAX_BYTES:
+        raise HTTPException(413, "Capture is too large")
+    os.makedirs(folder, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    name = f"viva-{stamp}{ext}"
+    with open(os.path.join(folder, name), "wb") as out:
+        out.write(data)
+    logger.info("Saved capture %s (%d bytes)", name, len(data))
+    return {"saved": name}
 
 
 # Registered first so the contract's /api/session/{id} wins over the skeleton's.

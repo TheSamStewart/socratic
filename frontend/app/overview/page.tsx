@@ -47,7 +47,7 @@ export default function Overview() {
       <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card className="flex flex-col justify-center p-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">Overall</p>
-          <p className="mt-1 font-serif text-4xl font-semibold"><span className="tnum">{count("green")}</span><span className="text-xl text-ink3"> / {all.length}</span></p>
+          <p className="mt-1 text-4xl font-semibold"><span className="tnum">{count("green")}</span><span className="text-xl text-ink3"> / {all.length}</span></p>
           <p className="mb-4 text-sm text-ink2">concepts secure</p>
           <ProgressLine value={count("green")} total={all.length} />
         </Card>
@@ -55,7 +55,7 @@ export default function Overview() {
           {stats.map((s) => (
             <Card key={s.label} className="p-5">
               <div className="flex items-center gap-2 text-xs text-ink2"><Dot status={s.s} /> {s.label}</div>
-              <p className="tnum mt-3 font-serif text-3xl font-semibold">{s.value}</p>
+              <p className="tnum mt-3 text-3xl font-semibold">{s.value}</p>
             </Card>
           ))}
         </div>
@@ -63,12 +63,12 @@ export default function Overview() {
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="min-w-0 p-6">
-          <h2 className="mb-4 font-serif text-lg font-semibold">Mastery map by week</h2>
+          <h2 className="mb-4 text-lg font-semibold">Mastery map by week</h2>
           <MasteryMap rows={rows} />
         </Card>
         <div className="min-w-0 space-y-4">
           <Card className="p-6">
-            <h2 className="mb-3 font-serif text-lg font-semibold">Worth practising next</h2>
+            <h2 className="mb-3 text-lg font-semibold">Worth practising next</h2>
             {focus.length === 0 ? <p className="text-ink2">Nothing to fix right now. Nice work.</p> : (
               <ul className="space-y-1">
                 {focus.map((c) => <li key={c.id}><Link href={c.href ?? "/teach"} className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-subtle"><Dot status={c.status} /><span className="flex-1 text-sm">{c.name}</span><ArrowRight size={14} className="text-accent" /></Link></li>)}
@@ -77,7 +77,7 @@ export default function Overview() {
             <Link href="/teach" className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white hover:bg-accent-ink"><MessageCircle size={15} /> Talk to Max</Link>
           </Card>
           <Card className="p-6">
-            <h2 className="mb-3 font-serif text-lg font-semibold">Coming up</h2>
+            <h2 className="mb-3 text-lg font-semibold">Coming up</h2>
             {upcoming.length === 0 ? <p className="text-sm text-ink2">All work submitted. Well done.</p> : (
               <ul className="divide-y divide-line">
                 {upcoming.map((a) => (

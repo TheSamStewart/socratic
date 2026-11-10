@@ -23,7 +23,7 @@ export function Pill({ status, children }: { status: Status; children?: ReactNod
   const c = STATUS_COLOR[status];
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+      className="inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium"
       style={{ background: `${c}1f`, color: STATUS_INK[status] }}
     >
       <Dot status={status} size={6} />
@@ -41,7 +41,7 @@ export function Confidence({ value }: { value: number }) {
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-line bg-white ${className}`}>{children}</div>;
+  return <div className={`rounded-md border border-line bg-white ${className}`}>{children}</div>;
 }
 
 export function PrimaryButton({ className = "", ...p }: ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -79,11 +79,11 @@ export function Empty({ icon, title, body, action }: { icon: ReactNode; title: s
 
 export function PageTitle({ title, sub, eyebrow, actions }: { title: string; sub?: string; eyebrow?: string; actions?: ReactNode }) {
   return (
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
       <div className="min-w-0 max-w-3xl">
-        {eyebrow && <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>}
-        <h1 className="text-[28px] leading-tight">{title}</h1>
-        {sub && <p className="mt-2 text-[15px] leading-relaxed text-ink2">{sub}</p>}
+        {eyebrow && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>}
+        <h1 className="text-[24px] leading-tight">{title}</h1>
+        {sub && <p className="mt-1.5 text-[14px] leading-relaxed text-ink2">{sub}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -93,7 +93,7 @@ export function PageTitle({ title, sub, eyebrow, actions }: { title: string; sub
 /** A soft blue note: tips, "how this works", next steps. */
 export function Note({ icon, title, children, className = "" }: { icon?: ReactNode; title?: string; children: ReactNode; className?: string }) {
   return (
-    <div className={`flex gap-3 rounded-xl border border-accent-line bg-accent-soft p-4 text-sm text-ink ${className}`}>
+    <div className={`flex gap-3 rounded-md border border-accent-line border-l-[3px] border-l-accent bg-accent-soft p-4 text-sm text-ink ${className}`}>
       {icon && <span className="mt-0.5 shrink-0 text-accent">{icon}</span>}
       <div className="min-w-0">
         {title && <p className="mb-0.5 font-semibold">{title}</p>}

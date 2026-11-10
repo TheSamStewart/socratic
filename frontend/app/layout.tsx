@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Source_Serif_4 } from "next/font/google";
+import { Inter, Merriweather } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppProvider";
 import { Suspense } from "react";
@@ -7,7 +7,7 @@ import Shell from "@/components/Shell";
 import { LogoMark } from "@/components/Logo";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-source-serif", weight: ["600", "700"], display: "swap" });
+const serif = Merriweather({ subsets: ["latin"], variable: "--font-merriweather", weight: ["700"], display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Socratic", template: "%s · Socratic" },
@@ -24,7 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             fallback={
               <div className="flex h-full items-center justify-center gap-3 bg-page text-ink" role="status">
                 <LogoMark size={32} />
-                <p className="font-serif text-xl font-semibold">Socratic</p>
+                <p className="font-serif text-xl font-bold">Socratic</p>
+                <span className="text-sm text-ink3">The University of Manchester</span>
                 <span className="text-sm text-ink2">Loading…</span>
               </div>
             }

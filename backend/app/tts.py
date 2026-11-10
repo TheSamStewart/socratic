@@ -15,10 +15,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Premade ElevenLabs voices (work without voices_read): Rachel = calm, Josh = lighter.
+# Current ElevenLabs default voices: usable on the free plan via the API (older "library"
+# voices like Rachel/Josh now need a paid plan). Alice = clear British examiner, Liam = younger Max.
 DEFAULT_VOICES = {
-    "examiner": "21m00Tcm4TlvDq8ikWAM",
-    "max": "TxGEqnHWrfWFTfGW9XjX",
+    "examiner": "Xb7hH8MSUJpSbSDYk0k2",
+    "max": "TX3LPaxmHKxFdv7VOQHJ",
 }
 DEFAULT_MODEL = "eleven_flash_v2_5"  # low latency
 API_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"

@@ -1,24 +1,30 @@
 /**
- * Socratic mark: the hex from the mastery map holding a question mark.
- * Socratic method = learning by being asked. Keep in sync with app/icon.svg.
+ * Socratic mark: a classical column inside a speech bubble. Socratic dialogue =
+ * learning through conversation. Keep in sync with app/icon.svg.
+ * `inverse` draws it white for dark backgrounds.
  */
-export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
+export function LogoMark({ size = 28, className = "", inverse = false }: { size?: number; className?: string; inverse?: boolean }) {
+  const fill = inverse ? "#fff" : "var(--color-accent)";
+  const glyph = inverse ? "var(--color-brand)" : "#fff";
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
-      <path d="M16 1.8 28.3 8.9v14.2L16 30.2 3.7 23.1V8.9Z" fill="var(--color-accent)" stroke="var(--color-accent)" strokeWidth="2.4" strokeLinejoin="round" />
-      <path d="M12.3 12.4a3.8 3.8 0 1 1 5.5 3.4c-1.1.6-1.8 1.4-1.8 2.6v.7" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="16" cy="22.7" r="1.55" fill="#fff" />
+      <path d="M8 2.5h16A5.5 5.5 0 0 1 29.5 8v11a5.5 5.5 0 0 1-5.5 5.5h-7.5L10 29.5v-5H8A5.5 5.5 0 0 1 2.5 19V8A5.5 5.5 0 0 1 8 2.5Z" fill={fill} />
+      <rect x="9.5" y="7" width="13" height="2.2" rx=".6" fill={glyph} />
+      <rect x="11" y="10.4" width="2.1" height="8" fill={glyph} />
+      <rect x="14.95" y="10.4" width="2.1" height="8" fill={glyph} />
+      <rect x="18.9" y="10.4" width="2.1" height="8" fill={glyph} />
+      <rect x="9.5" y="19.4" width="13" height="2" rx=".6" fill={glyph} />
     </svg>
   );
 }
 
-export default function Logo({ sub }: { sub?: string }) {
+export default function Logo({ sub, inverse = false }: { sub?: string; inverse?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2.5">
-      <LogoMark size={30} />
+      <LogoMark size={30} inverse={inverse} />
       <span className="min-w-0 leading-tight">
-        <span className="block font-serif text-[19px] font-semibold tracking-tight text-ink">Socratic</span>
-        {sub && <span className="block truncate text-[11px] text-ink3">{sub}</span>}
+        <span className={`block font-serif text-[18px] font-bold tracking-tight ${inverse ? "text-white" : "text-brand"}`}>Socratic</span>
+        {sub && <span className={`block truncate text-[11px] ${inverse ? "text-white/65" : "text-ink3"}`}>{sub}</span>}
       </span>
     </span>
   );

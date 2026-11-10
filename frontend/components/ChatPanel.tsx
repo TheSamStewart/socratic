@@ -5,6 +5,7 @@ import { Keyboard, Lightbulb, Mic, Play, Quote, RefreshCw, RotateCcw, Square, Vo
 import Avatar, { type AvatarState } from "./Avatar";
 import Composer, { dictationSupported } from "./Composer";
 import MasteryRail from "./MasteryRail";
+import VideoStage from "./VideoStage";
 import { Card, GhostButton, Pill, PrimaryButton, Skeleton } from "./ui";
 import { chat, errorText, rephrase } from "@/lib/viva";
 import { speak, stopSpeaking, unlockAudio, type Speaker, type VoiceSource } from "@/lib/speech";
@@ -55,6 +56,7 @@ export default function ChatPanel({
   const [source, setSource] = useState<VoiceSource | null>(null);
   const [canListen, setCanListen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const retryRef = useRef<(() => void) | null>(null);
   const begun = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,8 @@ export default function ChatPanel({
   const finished = kind === "viva" && (session.mode === "recap" || session.mode === "done");
   const busy = phase === "thinking" || phase === "speaking";
   const voice = mode === "voice";
+  // The viva in voice mode is a video call: no chat transcript or text box, captions on the video.
+  const call = voice && kind === "viva";
   const current = session.concepts.find((c) => c.id === (focusConceptId ?? session.current_concept_id));
 
   useEffect(() => {
@@ -90,7 +94,12 @@ export default function ChatPanel({
   const chooseMode = (m: Mode) => {
     setMode(m);
     try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
-    if (m === "text") { stopSpeaking(); setPhase((p) => (p === "speaking" ? "idle" : p)); }
+    if (m === "text") {
+      stopSpeaking();
+      setPhase((p) => (p === "speaking" ? "idle" : p));
+      // Viva: text mode ends the video call; back to voice shows "Rejoin viva".
+      if (kind === "viva") { setStarted(false); live.current = { mode: m, started: false }; }
+    }
   };
 
   /** Speak a line, then (voice mode) hand the turn to the student by opening the mic. */
@@ -178,9 +187,30 @@ export default function ChatPanel({
     : canListen ? "Your turn. Tap the mic or type."
     : "Your turn. Type your answer below.";
 
+  const plainEnglish = async () => {
+    try {
+      const next = (await rephrase(session)).data;
+      onSession(next);
+      const last = next.viva_transcript.at(-1);
+      if (voice && started && last) sayThenListen(last.text, "examiner", true);
+    } catch (e) { setError(errorText(e)); }
+  };
+
+  const composerProps = {
+    disabled: finished,
+    sending: phase === "thinking",
+    listenSignal: voice && started ? listenSignal : 0,
+    handsFree: voice && started,
+    onSend: (v: string) => send(v),
+    onListeningChange: (l: boolean) => {
+      if (l) { stopSpeaking(); setPhase("listening"); }
+      else setPhase((p) => (p === "listening" ? "idle" : p));
+    },
+  };
+
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <Card className="flex h-[calc(100dvh-236px)] min-h-[560px] min-w-0 flex-col overflow-hidden">
+      <Card className={`flex h-[calc(100dvh-236px)] min-w-0 flex-col overflow-hidden ${call ? "min-h-[600px]" : "min-h-[560px]"}`}>
         {/* Header */}
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3.5">
           <Avatar who={speaker} size={36} state={voice ? avatarState : "idle"} />
@@ -212,8 +242,31 @@ export default function ChatPanel({
           </div>
         )}
 
+        {/* Viva in voice mode: a video call with the AI examiner. */}
+        {call && (
+          <VideoStage
+            speaker={speaker}
+            phase={phase}
+            started={started}
+            finished={finished}
+            caption={[...transcript].reverse().find((t) => t.role !== "student")?.text ?? null}
+            draft={draft}
+            onPlainEnglish={!isMax && !finished ? plainEnglish : undefined}
+            error={error}
+            onRetry={retryRef.current ? () => retryRef.current?.() : undefined}
+            mic={<Composer {...composerProps} variant="call" placeholder="" onDraft={setDraft} />}
+            status={stageText}
+            detail={started && source ? SOURCE_LABEL[source] : canListen ? "Speak your answers out loud. When you pause, your answer sends itself." : "Speaking answers works in Chrome and Edge. You can always type."}
+            canJoin={!(phase === "thinking" && transcript.length === 0)}
+            resumeLabel={transcript.some((t) => t.role === "student") ? "Rejoin viva" : "Join viva"}
+            onStart={startVoice}
+            onSkip={() => { stopSpeaking(); setPhase("idle"); if (!finished) setListenSignal((n) => n + 1); }}
+            leaveHref="/submit"
+          />
+        )}
+
         {/* Voice stage: who's talking, whose turn it is, and the controls. */}
-        {voice && (
+        {voice && kind !== "viva" && (
           <div className="flex flex-wrap items-center gap-4 border-b border-line bg-accent-soft/60 px-5 py-4">
             <Avatar who={speaker} size={56} state={phase === "listening" ? "listening" : avatarState} />
             <div className="min-w-0 flex-1">
@@ -235,7 +288,8 @@ export default function ChatPanel({
           </div>
         )}
 
-        {/* Transcript (always shown: captions for voice mode) */}
+        {/* Chat view (text mode, Teach Max). The video-call viva is voice only: captions live on the video. */}
+        {!call && <>
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-reading px-6 py-6" aria-live="polite">
           {transcript.length === 0 && phase === "thinking" && <div className="space-y-2"><Skeleton className="h-12 w-3/4" /><Skeleton className="h-12 w-1/2" /></div>}
           {transcript.map((t, i) => {
@@ -273,31 +327,14 @@ export default function ChatPanel({
 
         {!isMax && !finished && (
           <div className="flex items-center justify-end border-t border-line bg-subtle px-5 pt-2">
-            <GhostButton type="button" className="!h-7 text-xs" disabled={busy} onClick={async () => {
-              try {
-                const next = (await rephrase(session)).data;
-                onSession(next);
-                const last = next.viva_transcript.at(-1);
-                if (voice && started && last) sayThenListen(last.text, "examiner", true);
-              } catch (e) { setError(errorText(e)); }
-            }}>
+            <GhostButton type="button" className="!h-7 text-xs" disabled={busy} onClick={plainEnglish}>
               <RefreshCw size={12} /> Say that in plain English
             </GhostButton>
           </div>
         )}
 
-        <Composer
-          placeholder={isMax ? "Explain it in your own words…" : "Type or speak your answer…"}
-          disabled={finished}
-          sending={phase === "thinking"}
-          listenSignal={voice && started ? listenSignal : 0}
-          handsFree={voice && started}
-          onSend={(v) => send(v)}
-          onListeningChange={(l) => {
-            if (l) { stopSpeaking(); setPhase("listening"); }
-            else setPhase((p) => (p === "listening" ? "idle" : p));
-          }}
-        />
+        <Composer {...composerProps} placeholder={isMax ? "Explain it in your own words…" : "Type or speak your answer…"} />
+        </>}
       </Card>
 
       {/* Side rail: what's being discussed, progress, and how to get the most out of it. */}
@@ -308,7 +345,7 @@ export default function ChatPanel({
               <p className="text-xs font-semibold uppercase tracking-wider text-accent">Now discussing</p>
               <Pill status={current.status} />
             </div>
-            <p className="font-serif text-lg font-semibold leading-snug">{current.name}</p>
+            <p className="text-lg font-semibold leading-snug">{current.name}</p>
             {current.quote && (
               <p className="mt-3 flex gap-2 rounded-lg bg-subtle p-3 text-[13px] italic leading-relaxed text-ink2">
                 <Quote size={14} className="mt-0.5 shrink-0 text-ink3" />

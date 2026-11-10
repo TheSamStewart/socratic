@@ -29,7 +29,7 @@ export const dictationSupported = () => {
 };
 
 const MAX_HEIGHT = 200; // px, then the box scrolls
-const PAUSE_MS = 1800; // hands-free: this much silence after speech sends the answer
+const PAUSE_MS = 3000; // hands-free: this much silence after speech sends the answer (people pause to think)
 
 export default function Composer({
   placeholder,
@@ -39,6 +39,8 @@ export default function Composer({
   sending = false,
   listenSignal = 0,
   handsFree = false,
+  variant = "box",
+  onDraft,
 }: {
   placeholder: string;
   onSend: (text: string) => void;
@@ -50,6 +52,10 @@ export default function Composer({
   listenSignal?: number;
   /** Send automatically after a pause in speech. */
   handsFree?: boolean;
+  /** "call": no text box, just a round mic control for the video-call viva. */
+  variant?: "box" | "call";
+  /** Live text of what the student is saying (for on-video captions). */
+  onDraft?: (text: string) => void;
 }) {
   const [text, setText] = useState("");
   const [interim, setInterim] = useState("");
@@ -61,12 +67,21 @@ export default function Composer({
   const textRef = useRef(text);
   textRef.current = text;
   const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Call view: the student tapped the mic, so it stays open (no auto-send, restarts if the
+  // browser ends it on silence) until they press Done or tap the mic again.
+  const holdOpen = useRef(false);
   const cbRef = useRef({ onSend, onListeningChange, handsFree, disabled, sending });
   cbRef.current = { onSend, onListeningChange, handsFree, disabled, sending };
 
   useEffect(() => {
     setDictationOk(dictationSupported());
-    return () => { recRef.current?.abort(); if (pauseTimer.current) clearTimeout(pauseTimer.current); };
+    return () => {
+      holdOpen.current = false; // so onend doesn't restart the mic after leaving
+      const r = recRef.current;
+      recRef.current = null;
+      r?.abort();
+      if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    };
   }, []);
 
   // Grow with the text, up to MAX_HEIGHT.
@@ -82,6 +97,7 @@ export default function Composer({
 
   const stopListening = () => {
     clearPause();
+    holdOpen.current = false;
     const r = recRef.current;
     recRef.current = null;
     r?.stop();
@@ -101,11 +117,12 @@ export default function Composer({
     return true;
   };
 
-  const startListening = () => {
+  const startListening = (hold = false) => {
     const w = window as SpeechWindow;
     const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) { setDictationOk(false); return; }
-    if (recRef.current) return;
+    if (recRef.current) { if (hold) { holdOpen.current = true; clearPause(); } return; }
+    holdOpen.current = hold;
     const r = new SR();
     r.lang = "en-GB";
     r.continuous = true;
@@ -126,18 +143,25 @@ export default function Composer({
       }
       setInterim(interimText.trim());
       // Hands-free: wait for a pause, then send what was said.
-      if (cbRef.current.handsFree) {
+      if (cbRef.current.handsFree && !holdOpen.current) {
         clearPause();
         pauseTimer.current = setTimeout(() => { if (recRef.current === r) sendValue(textRef.current); }, PAUSE_MS);
       }
     };
     r.onerror = (e) => {
       // No microphone or no permission: dictation can't work here, so hide it.
-      if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") setDictationOk(false);
+      const fatal = e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture";
+      if (fatal) setDictationOk(false);
+      // Silence while held open is fine: onend restarts the mic.
+      if (!fatal && holdOpen.current && (e.error === "no-speech" || e.error === "aborted")) return;
       if (recRef.current === r) stopListening();
     };
     r.onend = () => {
       if (recRef.current !== r) return;
+      // Held open: the browser stopped on its own (silence or its time limit), so carry on listening.
+      if (holdOpen.current) {
+        try { r.start(); return; } catch { /* fall through and stop */ }
+      }
       // The browser ended the session (long silence). In hands-free mode, send what we have.
       const pending = textRef.current;
       stopListening();
@@ -163,6 +187,39 @@ export default function Composer({
   const send = () => {
     if (sendValue(text)) areaRef.current?.focus();
   };
+
+  const draftRef = useRef(onDraft);
+  draftRef.current = onDraft;
+  useEffect(() => { draftRef.current?.(`${text} ${interim}`.trim()); }, [text, interim]);
+
+  if (variant === "call") {
+    return (
+      <div className="flex items-center gap-2">
+        {dictationOk === false ? (
+          <span className="max-w-[220px] text-xs leading-snug text-white/70">Spoken answers need Chrome or Edge. Switch to Text above.</span>
+        ) : (
+          <button
+            type="button"
+            // Tap to speak (stays open while you think); tap again to send what you said.
+            onClick={listening ? (text.trim() ? send : stopListening) : () => startListening(true)}
+            disabled={disabled || sending || dictationOk === null}
+            aria-label={listening ? (text.trim() ? "Send answer" : "Stop listening") : "Answer out loud"}
+            aria-pressed={listening}
+            title={listening ? (text.trim() ? "Send answer" : "Stop listening") : "Answer out loud"}
+            className={`relative flex h-12 w-12 items-center justify-center rounded-full text-white transition-colors disabled:opacity-40 ${listening ? "bg-green" : "bg-white/12 hover:bg-white/20"}`}
+          >
+            {listening && <span className="voice-ring bg-green" />}
+            {sending ? <Loader2 size={18} className="relative animate-spin" /> : <Mic size={20} className="relative" />}
+          </button>
+        )}
+        {listening && text.trim() && (
+          <button type="button" onClick={send} className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-sm font-medium text-brand hover:bg-white/90">
+            <ArrowUp size={15} /> Done
+          </button>
+        )}
+      </div>
+    );
+  }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
@@ -204,7 +261,7 @@ export default function Composer({
           {dictationOk && (
             <button
               type="button"
-              onClick={listening ? stopListening : startListening}
+              onClick={listening ? stopListening : () => startListening()}
               disabled={disabled}
               aria-label={listening ? "Stop listening" : "Speak your answer"}
               aria-pressed={listening}

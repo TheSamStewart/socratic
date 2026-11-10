@@ -1,18 +1,19 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FileText, FlaskConical, Loader2, RotateCcw } from "lucide-react";
+import { FileText, FlaskConical, Loader2, RotateCcw, Upload } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import ChatPanel from "@/components/ChatPanel";
-import { Dot, Empty, GhostButton, PageTitle, Skeleton } from "@/components/ui";
+import { Dot, Empty, GhostButton, PageTitle, PrimaryButton, Skeleton } from "@/components/ui";
 import { labRubricText, labWorkText } from "@/lib/course";
-import { errorText, submitWork } from "@/lib/viva";
+import { errorText, sessionExists, submitWork } from "@/lib/viva";
 import type { Session } from "@/lib/types";
 
 export default function Teach() {
   const { labs, mastery, labSessions, saveLabSession, assessments, patchAssessment, student, ready } = useApp();
   const params = useSearchParams();
+  const router = useRouter();
   const finalA = assessments.find((a) => a.kind === "final" && a.session);
   const wantFinal = params.get("a") === "final" && !!finalA;
   const [labId, setLabId] = useState<string | null>(params.get("lab"));
@@ -55,11 +56,33 @@ export default function Teach() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, useFinal, lab?.id, !!labSession, labId, !!finalA]);
 
+  // Sessions live in backend memory, so a restart forgets them while the browser keeps its copy.
+  // Check each one before chatting: a lab is simply rebuilt; the essay needs uploading again.
+  const session: Session | undefined = useFinal && finalA ? finalA.session : labSession;
+  const [alive, setAlive] = useState<Record<string, boolean | null>>({});
+  const sid = session?.id;
+  useEffect(() => {
+    if (!sid || sid in alive) return;
+    let off = false;
+    sessionExists(sid).then((ok) => {
+      if (off) return;
+      setAlive((m) => ({ ...m, [sid]: ok }));
+      if (ok === false && !useFinal && lab) create(lab); // rebuild the lab session
+    });
+    return () => { off = true; };
+  }, [sid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const status = sid ? alive[sid] : undefined;
+
   if (!ready) return <Skeleton className="h-64 w-full" />;
   if (labs.length === 0 && !finalA)
     return <Empty icon={<FlaskConical size={18} />} title="No labs yet" body="Your module leader uploads each week's lab here. Max will be ready when they do." />;
 
-  const session: Session | undefined = useFinal && finalA ? finalA.session : labSession;
+  const essayExpired = useFinal && !!finalA && status === false;
+  const reupload = () => {
+    if (!finalA) return;
+    patchAssessment(finalA.id, { status: "not_started", session: undefined, workName: undefined, decision: undefined });
+    router.push("/submit");
+  };
   const onSession = (s: Session) => {
     if (useFinal && finalA) patchAssessment(finalA.id, { session: s });
     else if (lab) saveLabSession(lab.id, s);
@@ -97,18 +120,26 @@ export default function Teach() {
         })}
       </div>
 
-      {error && !session && (
+      {error && (!session || status === false) && (
         <div className="flex items-center gap-3 rounded border border-[#f5c2bd] bg-[#fff5f4] px-4 py-3 text-sm" role="alert">
           <span className="flex-1 text-[#b42318]">{error}</span>
           {lab && <GhostButton onClick={() => create(lab)}><RotateCcw size={14} /> Retry</GhostButton>}
         </div>
       )}
-      {!session && !error && (
+      {essayExpired && (
+        <Empty
+          icon={<RotateCcw size={18} />}
+          title="Max lost track of your essay"
+          body="The Socratic server was restarted, so it no longer has your submission. Upload it again to practise with Max (weekly labs still work)."
+          action={<PrimaryButton onClick={reupload}><Upload size={14} /> Upload my essay again</PrimaryButton>}
+        />
+      )}
+      {!essayExpired && (!session || status === undefined || status === false) && !error && (
         <div className="flex items-center gap-3 rounded border border-line bg-white px-4 py-6 text-ink2" role="status">
           <Loader2 size={16} className="animate-spin" /> {creating ? `Getting Max ready for Week ${lab?.week}…` : "Loading…"}
         </div>
       )}
-      {session && (
+      {session && (status === true || status === null) && (
         <ChatPanel
           key={session.id}
           kind="max"

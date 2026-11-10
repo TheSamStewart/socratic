@@ -71,6 +71,7 @@ class MarkerAgent(Agent):
     system_prompt = SYSTEM_PROMPT
     output_model = Mark
     model = settings.judge_model
+    effort = "low"  # runs on every answer, so speed matters; the rubric does the hard work
 
 
 def _trim_quote(quote: str | None) -> str:

@@ -19,7 +19,7 @@ from app.llm import LLMError
 
 CONCEPTS_PROMPT = f"""You read a university student's submission and record the ideas it depends on. You do not judge it.
 
-The JSON has one field, "submission". Return 4 to 6 concepts, each a named research or subject idea the argument relies on, such as "Correlation vs causation" or "Self-report bias".
+The JSON has one field, "submission". Return 4 to 6 concepts (a short text, such as a lab with only a few points, may have fewer: return only the ones it really makes), each a named research or subject idea the argument relies on, such as "Correlation vs causation" or "Self-report bias".
 - id: "c1", "c2", and so on.
 - name: the standard textbook term for the idea, in 2 to 5 words, not a description of this essay. Where the student reasons from an association to a cause, the term is "Correlation vs causation", whatever reason they give for doing so. Other standard terms include Sampling, Self-report bias, Cross-sectional design and Mediating variables.
 - claim: what the student says about this idea, stated neutrally and faithfully, even if it is wrong.
@@ -48,7 +48,7 @@ NOTHING_TO_CHECK = (
     "We couldn't find any arguments to check in this file. "
     "Upload your own essay or answers, not the brief."
 )
-MIN_CONCEPTS = 4
+MIN_CONCEPTS = 1
 MAX_CONCEPTS = 6
 STATUS_RANK = {"red": 0, "amber": 1, "green": 2, "untested": 3}
 

@@ -1,0 +1,39 @@
+# Whole Socratic stack: FastAPI backend (Claude, ElevenLabs, Simli token) + Next.js frontend.
+#   docker compose up --build      then open http://localhost:3000
+# Keys are read from the repo-root .env at runtime (ANTHROPIC_API_KEY, MODEL, ELEVENLABS_API_KEY, SIMLI_API_KEY).
+# Video examiner off (saves Simli minutes):  FACE=off docker compose up --build
+
+services:
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      SEED_DEMO: "1"
+      CAPTURE_DIR: /srv/captures   # viva ?capture=1 saves screenshots/recordings here
+    ports:
+      - "8000:8000"
+    volumes:
+      - tts-cache:/srv/backend/app/.tts_cache   # keep generated voice clips between restarts
+      - ./captures:/srv/captures                 # → captures/ in the repo (gitignored)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_FACE: ${FACE:-simli}
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  tts-cache:

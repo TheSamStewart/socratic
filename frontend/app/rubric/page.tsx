@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, ClipboardCheck, Download, Lightbulb, Loader2, Mic, UserCheck } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
+import FileDrop from "@/components/FileDrop";
 import { Card, Confidence, Dot, GhostButton, Note, PageTitle, Pill, PrimaryButton, ProgressLine, STATUS_COLOR } from "@/components/ui";
 import type { Assessment } from "@/lib/course";
 import { checkLab, errorText } from "@/lib/viva";
@@ -36,7 +37,7 @@ function Criterion({ r, practise, practiseHref }: { r: RubricCriterion; practise
 function LabFeedback() {
   const { labs, labFeedback, saveLabFeedback, student, notify } = useApp();
   const [labId, setLabId] = useState(labs[0]?.id ?? "");
-  const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [labErr, setLabErr] = useState<string | null>(null);
   const lab = labs.find((l) => l.id === labId) ?? labs[0];
@@ -44,10 +45,11 @@ function LabFeedback() {
   const result = labFeedback[lab.id];
 
   const run = async () => {
+    if (!file) return;
     setBusy(true);
     setLabErr(null);
     try {
-      const { rubric } = await checkLab(student, notes, lab);
+      const { rubric } = await checkLab(student, file, lab);
       saveLabFeedback(lab.id, rubric);
       notify("student", `Feedback on your Week ${lab.week} lab notes is ready.`, "/rubric");
     } catch (e) {
@@ -59,7 +61,7 @@ function LabFeedback() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <p className="mb-3 text-sm text-ink2">Paste or upload your lab work or notes for the week. You&apos;ll get feedback against what the lab was meant to teach. It isn&apos;t marked, and nobody else sees it.</p>
+        <p className="mb-3 text-sm text-ink2">Upload your lab work or notes for the week. You&apos;ll get feedback against what the lab was meant to teach. It isn&apos;t marked, and nobody else sees it.</p>
         <div className="mb-3 flex flex-wrap gap-2">
           {labs.map((l) => (
             <button key={l.id} onClick={() => setLabId(l.id)} className={`rounded border px-3 py-1.5 text-sm ${l.id === lab.id ? "border-accent bg-muted font-semibold text-accent" : "border-line bg-white hover:bg-subtle"}`}>
@@ -67,18 +69,17 @@ function LabFeedback() {
             </button>
           ))}
         </div>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={6}
-          aria-label="Your lab notes"
-          placeholder={`Your Week ${lab.week} lab work or notes…`}
-          className="w-full resize-none rounded border border-line px-3 py-2 outline-none focus:border-ink3"
+        <FileDrop
+          id={`lab-${lab.id}`}
+          label={`Week ${lab.week} lab work`}
+          file={file}
+          onFile={setFile}
+          disabled={busy}
         />
         {labErr && <p className="mt-2 text-sm text-[#b42318]" role="alert">{labErr}</p>}
         <div className="mt-3 flex justify-end">
-          <PrimaryButton onClick={run} disabled={busy || !notes.trim()}>
-            {busy && <Loader2 size={14} className="animate-spin" />}{busy ? "Checking…" : labErr ? "Retry" : "Check my lab notes"}
+          <PrimaryButton onClick={run} disabled={busy || !file}>
+            {busy && <Loader2 size={14} className="animate-spin" />}{busy ? "Checking…" : labErr ? "Retry" : "Check my lab work"}
           </PrimaryButton>
         </div>
       </Card>
@@ -174,7 +175,7 @@ export default function Feedback() {
 
         <aside className="no-print min-w-0 space-y-4">
           <Card className="p-6">
-            <h2 className="mb-4 font-serif text-lg font-semibold">At a glance</h2>
+            <h2 className="mb-4 text-lg font-semibold">At a glance</h2>
             {items.length === 0 ? (
               <p className="text-sm text-ink2">Nothing yet. Check some lab notes or submit work and your feedback collects here.</p>
             ) : (
@@ -182,7 +183,7 @@ export default function Feedback() {
                 <div className="mb-4 grid grid-cols-3 gap-2 text-center">
                   {([["green", "Met"], ["amber", "Partly"], ["red", "Missing"]] as const).map(([s, l]) => (
                     <div key={s} className="rounded-lg bg-subtle px-2 py-3">
-                      <p className="tnum font-serif text-2xl font-semibold">{n(s)}</p>
+                      <p className="tnum text-2xl font-semibold">{n(s)}</p>
                       <p className="flex items-center justify-center gap-1.5 text-xs text-ink2"><Dot status={s} size={6} />{l}</p>
                     </div>
                   ))}
@@ -193,7 +194,7 @@ export default function Feedback() {
           </Card>
           {focus.length > 0 && (
             <Card className="p-6">
-              <h2 className="mb-3 font-serif text-lg font-semibold">Focus next</h2>
+              <h2 className="mb-3 text-lg font-semibold">Focus next</h2>
               <ul className="space-y-1">
                 {focus.map((f) => (
                   <li key={f.key}>

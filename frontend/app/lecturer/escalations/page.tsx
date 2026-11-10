@@ -70,7 +70,7 @@ export default function Escalations() {
       </div>
       <aside className="min-w-0 space-y-4">
         <Card className="p-6">
-          <h2 className="mb-4 font-serif text-lg font-semibold">This week</h2>
+          <h2 className="mb-4 text-lg font-semibold">This week</h2>
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
               ["Open", sorted.filter((c) => c.status === "open").length],
@@ -78,7 +78,7 @@ export default function Escalations() {
               ["Students", new Set(sorted.flatMap((c) => c.students)).size],
             ].map(([l, v]) => (
               <div key={l} className="rounded-lg bg-subtle px-2 py-3">
-                <p className="tnum font-serif text-2xl font-semibold">{v}</p>
+                <p className="tnum text-2xl font-semibold">{v}</p>
                 <p className="text-xs text-ink2">{l}</p>
               </div>
             ))}

@@ -159,4 +159,8 @@ export const topicStatus = (t: { red: number; amber: number; green: number }): S
 export const labWorkText = (lab: Lab) =>
   `Week ${lab.week} lab: ${lab.title}\n${lab.summary}\n` + lab.concepts.map((c) => c.misconception).join("\n");
 export const labRubricText = (lab: Lab) =>
-  lab.concepts.map((c) => `${c.name} (${Math.round(100 / lab.concepts.length)}%): ${c.claim}`).join("\n");
+  lab.concepts.map((c, i, all) => {
+    // Weights must add up to exactly 100 (the backend rejects 99): the last criterion takes the remainder.
+    const w = Math.floor(100 / all.length);
+    return `${c.name} (${i === all.length - 1 ? 100 - w * (all.length - 1) : w}%): ${c.claim}`;
+  }).join("\n");
